@@ -1,14 +1,10 @@
 package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
-import com.byby.trobot.dto.PortfolioDto;
-import com.byby.trobot.executor.Executor;
-import com.byby.trobot.service.ExchangeService;
-import com.byby.trobot.service.OrderbookService;
-import com.byby.trobot.service.SharesService;
+import com.byby.trobot.service.impl.ExchangeService;
+import com.byby.trobot.service.impl.OrderbookService;
+import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.strategy.impl.Spread;
-import io.smallrye.mutiny.Uni;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;

@@ -1,4 +1,4 @@
-package com.byby.trobot.service;
+package com.byby.trobot.service.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +11,9 @@ import javax.inject.Inject;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Операции с акциями
+ */
 @ApplicationScoped
 public class SharesService {
     private static final Logger log = LoggerFactory.getLogger(SharesService.class);
@@ -63,17 +66,17 @@ public class SharesService {
 
 
 
-    public void printByFigi(InvestApi api){
-        var instrument = api.getInstrumentsService().getInstrumentByFigiSync("BBG000B9XRY4");
-        log.info(
-                "инструмент figi: {}, лотность: {}, текущий режим торгов: {}, признак внебиржи: {}, признак доступности торгов " +
-                        "через api : {}",
-                instrument.getFigi(),
-                instrument.getLot(),
-                instrument.getTradingStatus().name(),
-                instrument.getOtcFlag(),
-                instrument.getApiTradeAvailableFlag());
-    }
+//    public void printByFigi(InvestApi api){
+//        var instrument = api.getInstrumentsService().getInstrumentByFigiSync("BBG000B9XRY4");
+//        log.info(
+//                "инструмент figi: {}, лотность: {}, текущий режим торгов: {}, признак внебиржи: {}, признак доступности торгов " +
+//                        "через api : {}",
+//                instrument.getFigi(),
+//                instrument.getLot(),
+//                instrument.getTradingStatus().name(),
+//                instrument.getOtcFlag(),
+//                instrument.getApiTradeAvailableFlag());
+//    }
 
     public List<Share> findByTicker(List<String> tickers) {
         List<Share> shares = api.getInstrumentsService().getTradableSharesSync();

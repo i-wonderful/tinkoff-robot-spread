@@ -7,6 +7,9 @@ import java.util.List;
 
 @ApplicationScoped
 public class ApplicationProperties {
+    @ConfigProperty(name = "robot.sandbox.mode")
+    boolean sandboxMode;
+
     @ConfigProperty(name = "tinkoff.figi.usd")
     String figiUsd;
 
@@ -63,5 +66,9 @@ public class ApplicationProperties {
 
     public double getRobotSpreadPercent() {
         return robotSpreadPercent;
+    }
+
+    public boolean isSandboxMode() {
+        return sandboxMode;
     }
 }

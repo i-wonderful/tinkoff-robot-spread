@@ -1,6 +1,5 @@
-package com.byby.trobot.service;
+package com.byby.trobot.service.impl;
 
-import com.byby.trobot.common.InvestUtil;
 import com.google.protobuf.Timestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +7,6 @@ import ru.tinkoff.piapi.contract.v1.TradingDay;
 import ru.tinkoff.piapi.contract.v1.TradingSchedule;
 import ru.tinkoff.piapi.core.InvestApi;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import java.time.Instant;
@@ -19,6 +17,9 @@ import java.util.stream.Collectors;
 import static ru.tinkoff.piapi.core.utils.DateUtils.timestampToInstant;
 import static ru.tinkoff.piapi.core.utils.DateUtils.timestampToString;
 
+/**
+ * Операции с биржами
+ */
 @RequestScoped
 public class ExchangeService {
     private static final Logger log = LoggerFactory.getLogger(ExchangeService.class);

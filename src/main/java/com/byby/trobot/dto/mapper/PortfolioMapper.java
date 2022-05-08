@@ -44,13 +44,6 @@ public class PortfolioMapper {
             } else {
                 dto.addPosition(toDto(position));
             }
-//            var quantity = position.getQuantity();
-//            var currentPrice = position.getCurrentPrice();
-//            var expectedYield = position.getExpectedYield();
-//            log.info(
-//                    "позиция с figi: {}, количество инструмента: {}, текущая цена инструмента: {}, текущая расчитанная " +
-//                            "доходность: {}",
-//                    figi, quantity, currentPrice, expectedYield);
         }
 
         return dto;

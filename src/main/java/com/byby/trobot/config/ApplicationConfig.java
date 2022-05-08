@@ -3,7 +3,7 @@ package com.byby.trobot.config;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.executor.impl.RealExecutor;
 import com.byby.trobot.executor.impl.SandboxExecutor;
-import com.byby.trobot.service.SharesService;
+import com.byby.trobot.service.impl.SharesService;
 import io.quarkus.arc.DefaultBean;
 import io.quarkus.arc.properties.IfBuildProperty;
 import ru.tinkoff.piapi.core.InvestApi;

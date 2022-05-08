@@ -2,7 +2,8 @@ package com.byby.trobot.executor.impl;
 
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.executor.Executor;
-import com.byby.trobot.service.SharesService;
+import com.byby.trobot.service.impl.SharesService;
+import io.quarkus.vertx.ConsumeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
