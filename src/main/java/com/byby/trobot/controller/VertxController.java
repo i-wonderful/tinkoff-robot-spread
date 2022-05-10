@@ -16,8 +16,15 @@ public class VertxController {
     @GET
     @Path("/hello")
     public Uni<String> hello(@QueryParam("name") String name) {
-        return bus.<String>request("greetings1", name)
+        return bus.<String>request("greetings", name)
                 .onItem()
                 .transform(response -> response.body());
+    }
+
+    @GET
+    @Path("/testbus")
+    public Uni<Void> testEventBus(){
+        bus.send("postBuyOrder", "123");
+        return Uni.createFrom().voidItem();
     }
 }

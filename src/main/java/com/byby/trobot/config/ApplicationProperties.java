@@ -1,10 +1,14 @@
 package com.byby.trobot.config;
 
+import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithDefault;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.util.Collections;
 import java.util.List;
 
+// todo сделать через @ConfigMapping
 @ApplicationScoped
 public class ApplicationProperties {
     @ConfigProperty(name = "robot.sandbox.mode")
@@ -19,8 +23,8 @@ public class ApplicationProperties {
     @ConfigProperty(name = "robot.token.real")
     String tokenReal;
 
-    @ConfigProperty(name = "robot.strategy.check.buy.tickers")
-    List<String> checkBuyTickers;
+    @ConfigProperty(name = "robot.strategy.find.buy.tickers")
+    List<String> findBuyTickers;
 
     @ConfigProperty(name = "robot.exchange.names")
     List<String> robotExchangeNames;
@@ -52,12 +56,11 @@ public class ApplicationProperties {
         this.tokenReal = tokenReal;
     }
 
-    public List<String> getCheckBuyTickers() {
-        return checkBuyTickers;
-    }
-
-    public void setCheckBuyTickers(List<String> checkBuyTickers) {
-        this.checkBuyTickers = checkBuyTickers;
+    public List<String> getFindBuyTickers() {
+        // todo ?
+        return findBuyTickers.size() == 1 && findBuyTickers.get(0).equals("FIND_ALL") ?
+                Collections.emptyList() :
+                findBuyTickers;
     }
 
     public List<String> getRobotExchangeNames() {

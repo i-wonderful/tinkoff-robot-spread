@@ -22,10 +22,9 @@ public class SharesService {
     InvestApi api;
 
     /**
-     *
      * @return
      */
-    public Quotation calcMinBuyPrice(String figi){
+    public Quotation calcMinBuyPrice(String figi) {
         var lastPrice = api.getMarketDataService().getLastPricesSync(List.of(figi)).get(0).getPrice();
         log.info(">>> Last Price: " + lastPrice);
         var minPriceIncrement = api.getInstrumentsService().getInstrumentByFigiSync(figi).getMinPriceIncrement();
@@ -53,30 +52,32 @@ public class SharesService {
 
     /**
      * Получить список акций с бирж
+     *
      * @param exhanges
      * @return
      */
     public List<Share> getShares(List<String> exhanges) {
+        List<Share> shares = getShares().stream()
+                .filter(share -> exhanges.contains(share.getExchange()))
+                .collect(Collectors.toList());
+
+        return shares;
+    }
+
+    private List<Share> getShares() {
         return api.getInstrumentsService().getTradableSharesSync()
                 .stream()
                 .filter(share -> Boolean.TRUE.equals(share.getApiTradeAvailableFlag()))
-                .filter(share -> exhanges.contains(share.getExchange()))
                 .collect(Collectors.toList());
     }
 
-
-
-//    public void printByFigi(InvestApi api){
-//        var instrument = api.getInstrumentsService().getInstrumentByFigiSync("BBG000B9XRY4");
-//        log.info(
-//                "инструмент figi: {}, лотность: {}, текущий режим торгов: {}, признак внебиржи: {}, признак доступности торгов " +
-//                        "через api : {}",
-//                instrument.getFigi(),
-//                instrument.getLot(),
-//                instrument.getTradingStatus().name(),
-//                instrument.getOtcFlag(),
-//                instrument.getApiTradeAvailableFlag());
-//    }
+    public String findTickerByFigi(String figi) {
+        return getShares().stream()
+                .filter(sh -> figi.equals(sh.getFigi()))
+                .findFirst()
+                .map(Share::getTicker)
+                .orElse(null);
+    }
 
     public List<Share> findByTicker(List<String> tickers) {
         List<Share> shares = api.getInstrumentsService().getTradableSharesSync();

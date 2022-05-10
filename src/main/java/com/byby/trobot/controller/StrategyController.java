@@ -9,12 +9,12 @@ import javax.ws.rs.Path;
 
 @Path("/robot")
 @ApplicationScoped
-public class RobotController {
+public class StrategyController {
 
     @Inject
     StrategyManager strategyManager;
 
-    @Path("/")
+    @Path("/start")
     public void go() {
         strategyManager.go();
     }

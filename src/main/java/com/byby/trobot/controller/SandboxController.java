@@ -52,10 +52,10 @@ public class SandboxController {
     @GET
     @Path("/go")
     public Response go(){
-        List<String> openExchanges = exchangeService.isOpenNow(properties.getRobotExchangeNames());
+        List<String> openExchanges = properties.getRobotExchangeNames();
         List<Share> shares = sharesService.getShares(openExchanges);
 
-        List<Spread> spread = orderbookService.getSpreadShapes(shares);
+        List<Spread> spread = orderbookService.getSpreads(shares);
         return Response.ok(spread).build();
     }
 
@@ -63,7 +63,7 @@ public class SandboxController {
     @Path("/subscribe")
     public Response subscribe(){
         List<String> figis = sharesService.randomFigi(5);
-        orderbookService.subscribeOrderBook(figis);
+        orderbookService.subscribeOrderBook(figis, (ob) -> {});
         return Response.ok().build();
     }
 

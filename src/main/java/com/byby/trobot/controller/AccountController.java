@@ -7,6 +7,7 @@ import com.byby.trobot.executor.Executor;
 import io.smallrye.mutiny.Uni;
 
 import javax.enterprise.context.RequestScoped;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -20,7 +21,7 @@ import static com.byby.trobot.dto.mapper.SettingsMapper.toDto;
 @RequestScoped
 public class AccountController {
     @Inject
-    Executor executor;
+    Instance<Executor> executor;
 
     @Inject
     ApplicationProperties properties;
@@ -28,7 +29,7 @@ public class AccountController {
     @GET
     @Path("/portfolio")
     public Uni<PortfolioDto> getPortfolio() {
-        return Uni.createFrom().item(executor.getPortfolio());
+        return Uni.createFrom().item(executor.get().getPortfolio());
     }
 
     @GET

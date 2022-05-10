@@ -23,17 +23,17 @@ export default {
                 positions: []
             }
         }
-    }, created() {
-
-    }, methods: {
+    },
+    methods: {
         getPortfolio() {
             axios.get("/account/portfolio")
-                .then((response) => {
-                    // console.log("in response-function")
-                    // console.log(response.positions);
-                    console.log(response.data);
+                .then(response => {
+                    // console.log(response.data);
                     this.portfolio = response.data;
                 })
+                .catch(error => {
+                    console.info(error);
+                });
         }
     }, mounted() {
         this.getPortfolio();

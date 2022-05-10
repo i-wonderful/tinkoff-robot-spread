@@ -13,7 +13,10 @@ public class SettingsMapper {
         dto.setSandboxMode(properties.isSandboxMode());
         dto.setExchangeNames(properties.getRobotExchangeNames().stream().collect(Collectors.joining(",")));
         dto.setStrategySpreadPercent(properties.getRobotSpreadPercent());
-        dto.setCheckBuyTickers(properties.getCheckBuyTickers().stream().collect(Collectors.joining(",")));
+        String tickers = properties.getFindBuyTickers()
+                .stream()
+                .collect(Collectors.joining(","));
+        dto.setCheckBuyTickers(tickers.isEmpty() ? "Искать среди всех акций": tickers);
         dto.setTokenReal(Strings.isNullOrEmpty(properties.getTokenReal()) ? "не указан" : "***");
         dto.setTokenSandbox(Strings.isNullOrEmpty(properties.getTokenSandbox()) ? "не указан" : "***");
         return dto;
