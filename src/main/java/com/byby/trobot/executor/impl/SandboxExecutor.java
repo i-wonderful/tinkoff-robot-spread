@@ -83,7 +83,6 @@ public class SandboxExecutor implements Executor {
         return response;
     }
 
-    @ConsumeEvent("cancelBuyOrder")
     @Override
     public void cancelBuyOrder(String figi) {
         log.info(">>> cancelBuyOrder Sandbox");

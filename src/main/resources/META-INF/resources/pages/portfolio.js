@@ -28,7 +28,6 @@ export default {
         getPortfolio() {
             axios.get("/account/portfolio")
                 .then(response => {
-                    // console.log(response.data);
                     this.portfolio = response.data;
                 })
                 .catch(error => {

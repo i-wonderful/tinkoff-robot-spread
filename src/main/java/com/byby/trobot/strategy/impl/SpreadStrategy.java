@@ -2,6 +2,7 @@ package com.byby.trobot.strategy.impl;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.OrderbookService;
 import com.byby.trobot.service.impl.ServiceUtil;
 import com.byby.trobot.service.impl.SharesService;
@@ -35,6 +36,9 @@ public class SpreadStrategy implements Strategy {
     @Inject
     OrderbookService orderbookService;
 
+    @Inject
+    ExchangeService exchangeService;
+
     /**
      * Ищем кандидатов на покупку.
      * Если указан параметр robot.strategy.find.buy.tickers, то берем их.
@@ -57,7 +61,7 @@ public class SpreadStrategy implements Strategy {
         } else {
             log("Ищем акции...");
 
-            List<String> exchanges = properties.getRobotExchangeNames();
+            List<String> exchanges = exchangeService.getExchangesOpenNow();
             List<Share> shares = sharesService.getShares(exchanges);
             log(String.format("Получено %d акций с бирж %s", shares.size(), exchanges));
 

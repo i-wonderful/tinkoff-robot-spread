@@ -33,20 +33,7 @@ public class SandboxController {
     OrderbookService orderbookService;
 
     @Inject
-    ExchangeService exchangeService;
-
-    @Inject
     ApplicationProperties properties;
-    /**
-     * Открытые биржи в данный момент
-     * @return
-     */
-    @GET
-    @Path("/open")
-    public Response openExchanges() {
-        List<String> openExchanges = exchangeService.isOpenNow(properties.getRobotExchangeNames());
-        return Response.ok(openExchanges).build();
-    }
 
 
     @GET

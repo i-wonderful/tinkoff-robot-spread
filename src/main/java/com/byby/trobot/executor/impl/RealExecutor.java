@@ -38,7 +38,6 @@ public class RealExecutor implements Executor {
         return null;
     }
 
-    @ConsumeEvent("cancelBuyOrder")
     @Override
     public void cancelBuyOrder(String figi) {
         log.info(">>> cancelBuyOrder Real ");

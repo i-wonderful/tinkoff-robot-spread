@@ -43,6 +43,11 @@ public class StrategyManagerImpl implements StrategyManager {
         executor.get().postBuyOrder(figi);
     }
 
+    @ConsumeEvent("cancelBuyOrder")
+    public void cancelBuyOrder(String figi) {
+        executor.get().cancelBuyOrder(figi);
+    }
+
     @Override
     public void sellAll() {
 

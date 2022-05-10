@@ -8,7 +8,8 @@ export default {
         return {
             isRun: false,
             logs: [],
-            eb: {}
+            eb: {},
+            exchanges: []
         }
     },
     methods: {
@@ -35,21 +36,41 @@ export default {
                 this.logs.push(message.body);
             })
         }
+
+        axios.get("/account/exchanges")
+            .then(response => {
+                console.log(response.data)
+                this.exchanges = response.data;
+            })
     }
     ,
 
     template: `
-      <div>
+      
         <h1>{{title}}</h1>
-        
-        <div v-for="(log, index) in logs">
-            <span>{{logs[index]}}</span><br/>
-        </div>
-        
-        <p id="log"></p>
+        <div class="grid">
+            <div class="col-3">Биржи:</div>
+            <div class="col-9">
+                <div v-for="(exc, index) in exchanges" >
+                    <b style="padding-right: 10px">{{exc.name}}</b> 
+                    <span v-if="exc.open">открыта</span>
+                    <span v-else>закрыта, 
+                        <span v-if="exc.tradingDay">откроется через {{exc.hoursBeforeOpen}} часов {{exc.minutesBeforeOpen}} минут</span>
+                        <span v-else>выходной</span>
+                    </span>
+                    <br/>
+                </div>
+            </div>
+        </div>  
         
         <button @click="onStart">Go</button>
         <button v-if="isRun">Stop</button>
-      </div>
+        
+        <div v-for="(log, index) in logs" style="max-height: 500px">
+            <span>{{logs[index]}}</span><br/>
+        </div>
+        
+
+      
     `
 }
