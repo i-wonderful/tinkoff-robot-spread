@@ -3,8 +3,6 @@ package com.byby.trobot.executor.impl;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.executor.Executor;
 import io.quarkus.arc.lookup.LookupIfProperty;
-import io.quarkus.runtime.Startup;
-import io.quarkus.vertx.ConsumeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
@@ -39,7 +37,7 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public void cancelBuyOrder(String figi) {
+    public void cancelBuyOrder(String orderId) {
         log.info(">>> cancelBuyOrder Real ");
     }
 

@@ -39,7 +39,6 @@ export default {
 
         axios.get("/account/exchanges")
             .then(response => {
-                console.log(response.data)
                 this.exchanges = response.data;
             })
     }

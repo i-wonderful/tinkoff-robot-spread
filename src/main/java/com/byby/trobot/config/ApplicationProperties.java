@@ -32,6 +32,9 @@ public class ApplicationProperties {
     @ConfigProperty(name = "robot.strategy.spread.percent")
     double robotSpreadPercent;
 
+    @ConfigProperty(name= "robot.strategy.shares.max.count")
+    int sharesMaxCount;
+
     public String getFigiUsd() {
         return figiUsd;
     }
@@ -73,5 +76,9 @@ public class ApplicationProperties {
 
     public boolean isSandboxMode() {
         return sandboxMode;
+    }
+
+    public int getSharesMaxCount() {
+        return sharesMaxCount;
     }
 }

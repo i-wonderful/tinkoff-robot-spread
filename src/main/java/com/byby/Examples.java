@@ -23,6 +23,25 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 public class Examples {
     private static Logger log = LoggerFactory.getLogger(Examples.class);
 
+    public static void ordersStreamExample(InvestApi api) {
+        StreamProcessor<TradesStreamResponse> consumer = response -> {
+            if (response.hasPing()) {
+                log.info("пинг сообщение");
+            } else if (response.hasOrderTrades()) {
+                log.info("Новые данные по сделкам: {}", response);
+            }
+        };
+
+        Consumer<Throwable> onErrorCallback = error -> log.error(error.toString());
+
+        //Подписка стрим сделок. Не блокирующий вызов
+        //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
+        api.getOrdersStreamService().subscribeTrades(consumer, onErrorCallback);
+
+        //Если обработка ошибок не требуется, то можно использовать перегруженный метод
+        api.getOrdersStreamService().subscribeTrades(consumer);
+    }
+
     public static void marketdataStreamExample(InvestApi api) {
         var randomFigi = randomFigi(api, 5);
 
@@ -107,26 +126,6 @@ public class Examples {
                 .limit(count)
                 .collect(Collectors.toList());
     }
-
-    private static void ordersStreamExample(InvestApi api) {
-        StreamProcessor<TradesStreamResponse> consumer = response -> {
-            if (response.hasPing()) {
-                log.info("пинг сообщение");
-            } else if (response.hasOrderTrades()) {
-                log.info("Новые данные по сделкам: {}", response);
-            }
-        };
-
-        Consumer<Throwable> onErrorCallback = error -> log.error(error.toString());
-
-        //Подписка стрим сделок. Не блокирующий вызов
-        //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
-        api.getOrdersStreamService().subscribeTrades(consumer, onErrorCallback);
-
-        //Если обработка ошибок не требуется, то можно использовать перегруженный метод
-        api.getOrdersStreamService().subscribeTrades(consumer);
-    }
-
 
     public static void getOrderbookExample(InvestApi api) {
 

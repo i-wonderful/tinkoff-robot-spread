@@ -25,16 +25,19 @@ public class OrderbookService {
     InvestApi api;
 
     /**
-     *
      * @param figi
      * @param listener
      */
-    public void  subscribeOrderBook(List<String> figi, Consumer<OrderBook> listener) {
+    public void subscribeOrderBook(List<String> figi, Consumer<OrderBook> listener) {
         StreamProcessor<MarketDataResponse> processor = response -> {
-            if (response.hasPing()) {
+            if (response.hasTradingStatus()) {
+                log.info("Новые данные по статусам: {}", response);
+            } else if (response.hasPing()) {
                 log.info("пинг сообщение, figi {}", figi);
             } else if (response.hasOrderbook()) {
                 listener.accept(response.getOrderbook());
+            } else if (response.hasTrade()) {
+                log.info("Новые данные по сделкам: {}", response);
             }
         };
 
@@ -44,6 +47,27 @@ public class OrderbookService {
                 .newStream(ORDERBOOK_STREAM_NAME, processor, onErrorCallback)
                 .subscribeOrderbook(figi);
 
+        api.getMarketDataStreamService()
+                .newStream("trades_stream", processor, onErrorCallback)
+                .subscribeTrades(figi);
+    }
+
+
+    public void subscribeTradesStream() {
+        StreamProcessor<TradesStreamResponse> consumer = response -> {
+            if (response.hasPing()) {
+                log.info("TradesStream пинг сообщение");
+            } else if (response.hasOrderTrades()) {
+                log.info("TradesStream Новые данные по сделкам: {}", response);
+            }
+        };
+
+        // todo
+        Consumer<Throwable> onErrorCallback = error -> log.error(error.toString());
+
+        //Подписка стрим сделок. Не блокирующий вызов
+        //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
+        api.getOrdersStreamService().subscribeTrades(consumer, onErrorCallback);
     }
 
     @Deprecated

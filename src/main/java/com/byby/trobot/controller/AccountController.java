@@ -31,7 +31,7 @@ public class AccountController {
     ApplicationProperties properties;
 
     @Inject
-    private ExchangeService exchangeService;
+    ExchangeService exchangeService;
 
     @GET
     @Path("/portfolio")
