@@ -20,8 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.byby.trobot.common.GlobalBusAddress.LOG;
-
 @ApplicationScoped
 public class StrategyManagerImpl implements StrategyManager {
     private static final Logger log = LoggerFactory.getLogger(StrategyManagerImpl.class);
@@ -59,28 +57,32 @@ public class StrategyManagerImpl implements StrategyManager {
             eventLogger.log("Отслеживаем акции", figi);
         }
 
-        strategy.go(figi);
+        strategy.start(figi);
     }
 
-    @ConsumeEvent(GlobalBusAddress.portBuyOrder)
-    public void postBuyOrder(String figi) {
+    @ConsumeEvent(value = GlobalBusAddress.POST_BUY_ORDER, blocking = true)     // todo сделать полностью неблокирующий вызов
+    public void postBuyLimitOrder(String figi) {
 
-        PostOrderResponse response = executor.get().postBuyOrder(figi);
+        PostOrderResponse response = executor.get().postBuyLimitOrder(figi);
         String orderId = response.getOrderId();
 
         cacheOrders.put(figi, List.of(orderId));
     }
 
-    @ConsumeEvent(GlobalBusAddress.cancelBuyOrder)
-    public void cancelBuyOrder(String figi) {
-        eventLogger.log(">>> Cancel Buy Order", figi);
 
-        List<String> orders = cacheOrders.get(figi);
-        orders.forEach(orderId -> {
-                    log.info(">>> OrderId " + orderId);
-                    executor.get().cancelBuyOrder(orderId);
-                }
-        );
+    @ConsumeEvent(value = GlobalBusAddress.BUY_ORDER, blocking = true)
+    public void cancelOrder(String orderId) {
+        log.info(">>> Cancel order " + orderId);
+
+        executor.get().cancelOrder(orderId);
+//        eventLogger.log(">>> Cancel Buy Order", figi);
+//
+//        List<String> orders = cacheOrders.get(figi);
+//        orders.forEach(orderId -> {
+//                    log.info(">>> OrderId " + orderId);
+//                    executor.get().cancelBuyOrder(orderId);
+//                }
+//        );
 
     }
 

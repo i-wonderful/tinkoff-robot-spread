@@ -2,11 +2,14 @@ package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.dto.ExchangeOpenDto;
+import com.byby.trobot.dto.OrderStateDto;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.SettingsRobotDto;
+import com.byby.trobot.dto.mapper.OrderMapper;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.ExchangeService;
 import io.smallrye.mutiny.Uni;
+import ru.tinkoff.piapi.contract.v1.OrderState;
 
 import javax.enterprise.context.RequestScoped;
 import javax.enterprise.inject.Instance;
@@ -33,26 +36,45 @@ public class AccountController {
     @Inject
     ExchangeService exchangeService;
 
+    @Inject
+    OrderMapper orderMapper;
+
+    /**
+     * Портфолио
+     */
     @GET
     @Path("/portfolio")
     public Uni<PortfolioDto> getPortfolio() {
         return Uni.createFrom().item(executor.get().getPortfolio());
     }
 
+    /**
+     * Настройки из properties
+     */
     @GET
     @Path("/settings")
-    public Uni<SettingsRobotDto> getSettings(){
+    public Uni<SettingsRobotDto> getSettings() {
         return Uni.createFrom().item(toDto(properties));
     }
 
     /**
      * Открытые биржи в данный момент
-     * @return
      */
     @GET
     @Path("/exchanges")
     public Uni<List<ExchangeOpenDto>> openExchanges() {
         List<ExchangeOpenDto> openExchanges = exchangeService.getExchangesInfoNow();
         return Uni.createFrom().item(openExchanges);
+    }
+
+    /**
+     * Текущие заявки со статусами
+     */
+    @GET
+    @Path("/orders")
+    public Uni<List<OrderStateDto>> getOrders() {
+        return executor.get().getOrders()
+                .onItem()
+                .transform(orderMapper::toDto);
     }
 }

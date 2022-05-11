@@ -13,5 +13,5 @@ public interface Strategy {
      *
      * @param figi
      */
-    void go(List<String> figi);
+    void start(List<String> figi);
 }

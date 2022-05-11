@@ -31,12 +31,22 @@ public class ExceptionMappers {
     }
 
     @ServerExceptionMapper
-    public RestResponse<String> mapException(StatusRuntimeException exception) {
-        log.error(">>> ", exception);
-        bus.publish(GlobalBusAddress.LOG.name(), "Exception " + exception.getMessage());
+    public RestResponse<String> mapException(StatusRuntimeException e) {
+        log.error(">>> ", e);
+        bus.publish(GlobalBusAddress.LOG.name(), "Exception " + e.getMessage());
 
         return RestResponse
                 .status(Response.Status.INTERNAL_SERVER_ERROR,
-                        "Tinkoff exception StatusRuntimeException: " + exception.getMessage());
+                        "Tinkoff exception StatusRuntimeException: " + e.getMessage());
+    }
+
+    @ServerExceptionMapper
+    public RestResponse<String> mapException(IllegalStateException e){
+        log.error(">>> ", e);
+        bus.publish(GlobalBusAddress.LOG.name(), "Exception " + e.getMessage());
+
+        return RestResponse
+                .status(Response.Status.INTERNAL_SERVER_ERROR,
+                        "IllegalStateException: " + e.getMessage());
     }
 }

@@ -1,10 +1,9 @@
 package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
-import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.OrderbookService;
 import com.byby.trobot.service.impl.SharesService;
-import com.byby.trobot.strategy.impl.Spread;
+import com.byby.trobot.strategy.impl.model.Spread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
@@ -45,16 +44,6 @@ public class SandboxController {
         List<Spread> spread = orderbookService.getSpreads(shares);
         return Response.ok(spread).build();
     }
-
-    @GET
-    @Path("/subscribe")
-    public Response subscribe(){
-        List<String> figis = sharesService.randomFigi(5);
-        orderbookService.subscribeOrderBook(figis, (ob) -> {});
-        return Response.ok().build();
-    }
-
-    // акции
 
 
     // инфа о юзере, не песочница

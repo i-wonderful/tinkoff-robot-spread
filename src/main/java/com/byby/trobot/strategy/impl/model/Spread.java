@@ -1,4 +1,4 @@
-package com.byby.trobot.strategy.impl;
+package com.byby.trobot.strategy.impl.model;
 
 import java.math.BigDecimal;
 

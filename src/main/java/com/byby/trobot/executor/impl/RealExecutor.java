@@ -3,12 +3,15 @@ package com.byby.trobot.executor.impl;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.executor.Executor;
 import io.quarkus.arc.lookup.LookupIfProperty;
+import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.piapi.contract.v1.OrderState;
 import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 import ru.tinkoff.piapi.core.InvestApi;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.util.List;
 
 //@Startup
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "false")
@@ -30,14 +33,20 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public PostOrderResponse postBuyOrder(String figi) {
-        log.info(">>> Real. Выставить заявку на покупку");
+    public PostOrderResponse postBuyLimitOrder(String figi) {
+        log.info(">>> todo. Real. Выставить заявку на покупку");
         // todo
         return null;
     }
 
     @Override
-    public void cancelBuyOrder(String orderId) {
+    public PostOrderResponse postSellLimitOrder(String figi) {
+        log.info(">>> todo. Real. Post Sell Order");
+        return null;
+    }
+
+    @Override
+    public void cancelOrder(String orderId) {
         log.info(">>> cancelBuyOrder Real ");
     }
 
@@ -45,5 +54,11 @@ public class RealExecutor implements Executor {
     public PortfolioDto getPortfolio() {
         // todo
         return null;
+    }
+
+    @Override
+    public Uni<List<OrderState>> getOrders() {
+        return Uni.createFrom()
+                .completionStage(api.getOrdersService().getOrders(getAccountId()));
     }
 }

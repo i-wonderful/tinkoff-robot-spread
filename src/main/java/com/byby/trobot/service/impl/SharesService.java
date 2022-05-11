@@ -25,6 +25,7 @@ public class SharesService {
     /**
      * @return
      */
+    // todo проверить
     public Quotation calcMinBuyPrice(String figi) {
         var lastPrice = api.getMarketDataService().getLastPricesSync(List.of(figi)).get(0).getPrice();
         var minPriceIncrement = api.getInstrumentsService().getInstrumentByFigiSync(figi).getMinPriceIncrement();
@@ -33,18 +34,6 @@ public class SharesService {
                 .setNano(lastPrice.getNano() - minPriceIncrement.getNano())
                 .build();
         return price;
-    }
-
-    @Deprecated
-    public List<String> randomFigi(int count) {
-        List<Share> shares = api.getInstrumentsService().getTradableSharesSync();
-//        System.out.println(">> Total Shares: " + shares.size());
-        return shares
-                .stream()
-                .filter(el -> Boolean.TRUE.equals(el.getApiTradeAvailableFlag()))
-                .map(Share::getFigi)
-                .limit(count)
-                .collect(Collectors.toList());
     }
 
     /**

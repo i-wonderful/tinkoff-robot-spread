@@ -1,7 +1,7 @@
 package com.byby.trobot.service.impl;
 
 
-import com.byby.trobot.strategy.impl.Spread;
+import com.byby.trobot.strategy.impl.model.Spread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
@@ -50,15 +50,24 @@ public class OrderbookService {
         api.getMarketDataStreamService()
                 .newStream("trades_stream", processor, onErrorCallback)
                 .subscribeTrades(figi);
+
+        api.getMarketDataStreamService()
+                .newStream("last_prices_stream", processor, onErrorCallback)
+                .subscribeLastPrices(figi);
     }
 
 
-    public void subscribeTradesStream() {
+    /**
+     *
+     */
+    public void subscribeTradesStream(Consumer<OrderTrades> listener) {
         StreamProcessor<TradesStreamResponse> consumer = response -> {
             if (response.hasPing()) {
                 log.info("TradesStream пинг сообщение");
             } else if (response.hasOrderTrades()) {
+                OrderTrades ot = response.getOrderTrades();
                 log.info("TradesStream Новые данные по сделкам: {}", response);
+                listener.accept(ot);
             }
         };
 
@@ -68,63 +77,6 @@ public class OrderbookService {
         //Подписка стрим сделок. Не блокирующий вызов
         //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
         api.getOrdersStreamService().subscribeTrades(consumer, onErrorCallback);
-    }
-
-    @Deprecated
-    public void subscribeOrderBookExample(List<String> figi) {
-        StreamProcessor<MarketDataResponse> processor = response -> {
-            if (response.hasTradingStatus()) {
-                log.info("Новые данные по статусам: {}", response);
-            } else if (response.hasPing()) {
-                log.info("пинг сообщение");
-            } else if (response.hasCandle()) {
-                log.info("Новые данные по свечам: {}", response);
-            } else if (response.hasOrderbook()) {
-                OrderBook orderBook = response.getOrderbook();
-                log.info("Новые данные по стакану: {}, figi {}", response, orderBook.getFigi());
-            } else if (response.hasTrade()) {
-                log.info("Новые данные по сделкам: {}", response);
-            } else if (response.hasSubscribeCandlesResponse()) {
-                var successCount = response.getSubscribeCandlesResponse().getCandlesSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                log.info("удачных подписок на свечи: {}", successCount);
-                log.info("неудачных подписок на свечи: {}", errorCount);
-            } else if (response.hasSubscribeInfoResponse()) {
-                var successCount = response.getSubscribeInfoResponse().getInfoSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                log.info("удачных подписок на статусы: {}", successCount);
-                log.info("неудачных подписок на статусы: {}", errorCount);
-            } else if (response.hasSubscribeOrderBookResponse()) {
-                var successCount = response.getSubscribeOrderBookResponse().getOrderBookSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                log.info("удачных подписок на стакан: {}", successCount);
-                log.info("неудачных подписок на стакан: {}", errorCount);
-            } else if (response.hasSubscribeTradesResponse()) {
-                var successCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                log.info("удачных подписок на сделки: {}", successCount);
-                log.info("неудачных подписок на сделки: {}", errorCount);
-            } else if (response.hasSubscribeLastPriceResponse()) {
-                var successCount = response.getSubscribeLastPriceResponse().getLastPriceSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                var errorCount = response.getSubscribeLastPriceResponse().getLastPriceSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
-                log.info("удачных подписок на последние цены: {}", successCount);
-                log.info("неудачных подписок на последние цены: {}", errorCount);
-            }
-        };
-
-        Consumer<Throwable> onErrorCallback = error -> log.error(error.toString());
-
-
-        //Подписка на список инструментов. Не блокирующий вызов
-        //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
-//        api.getMarketDataStreamService().newStream("trades_stream", processor, onErrorCallback).subscribeTrades(randomFigi);
-//        api.getMarketDataStreamService().newStream("candles_stream", processor, onErrorCallback).subscribeCandles(randomFigi);
-//        api.getMarketDataStreamService().newStream("info_stream", processor, onErrorCallback).subscribeInfo(randomFigi);
-        api.getMarketDataStreamService().newStream("orderbook_stream", processor, onErrorCallback).subscribeOrderbook(figi);
-        api.getMarketDataStreamService().newStream("last_prices_stream", processor, onErrorCallback).subscribeLastPrices(figi);
-
-
-        //api.getMarketDataStreamService().getStreamById("trades_stream").subscribeOrderbook(randomFigi);
     }
 
     public void unsucscribeOrderbook(List<String> figi) {
@@ -141,12 +93,12 @@ public class OrderbookService {
     public List<Spread> getSpread(List<String> figi) {
         return figi.stream()
                 .map(f -> getSpread(f))
-                .filter(spread -> !BigDecimal.ZERO.equals(spread.getDiff()))
+                .filter(spread -> !BigDecimal.ZERO.equals(spread.getDiff())) // todo убрать?
                 .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
                 .collect(Collectors.toList());
     }
 
-    private Spread getSpread(String figi) {
+    public Spread getSpread(String figi) {
         var orderBook = api.getMarketDataService().getOrderBookSync(figi, 1);
         return ServiceUtil.calcSpread(orderBook);
     }

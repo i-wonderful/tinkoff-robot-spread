@@ -8,11 +8,10 @@ public enum GlobalBusAddress {
     LOG,
     // Лог ошибок в ui
     LOG_ERR,
-    // Выставить заявку на покупу
-    POST_BUY_ORDER,
     // Выставить заяввку на продажу
     POST_SELL_ORDER;
 
-    public static final String portBuyOrder = "POST_BUY_ORDER";
-    public static final String cancelBuyOrder = "CANCEL_BUY_ORDER";
+    // Выставить заявку на покупу
+    public static final String POST_BUY_ORDER = "POST_BUY_ORDER";
+    public static final String BUY_ORDER = "CANCEL_BUY_ORDER";
 }

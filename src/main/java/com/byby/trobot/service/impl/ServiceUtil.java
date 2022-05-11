@@ -1,6 +1,6 @@
 package com.byby.trobot.service.impl;
 
-import com.byby.trobot.strategy.impl.Spread;
+import com.byby.trobot.strategy.impl.model.Spread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.GetOrderBookResponse;

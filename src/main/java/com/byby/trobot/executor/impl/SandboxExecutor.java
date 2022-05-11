@@ -1,10 +1,11 @@
 package com.byby.trobot.executor.impl;
 
-import com.byby.trobot.common.GlobalBusAddress;
+import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.SharesService;
 import io.quarkus.arc.lookup.LookupIfProperty;
+import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import ru.tinkoff.piapi.core.InvestApi;
 import ru.tinkoff.piapi.core.SandboxService;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.util.List;
 import java.util.UUID;
 
 import static com.byby.trobot.dto.mapper.PortfolioMapper.*;
@@ -21,7 +23,6 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 /**
  * Операции с песочницей
  */
-//@Startup
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "true")
 @ApplicationScoped
 public class SandboxExecutor implements Executor {
@@ -30,14 +31,16 @@ public class SandboxExecutor implements Executor {
     private SharesService sharesService;
     private SandboxService sandboxService;
     private EventBus bus;
+    private EventLogger eventLogger;
 
     private String accountId;
 
-    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus) {
+    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus, EventLogger eventLogger) {
         log.info(">>> Init sandboxExecutor");
         this.sharesService = sharesService;
         this.sandboxService = api.getSandboxService();
         this.bus = bus;
+        this.eventLogger = eventLogger;
     }
 
     @Override
@@ -60,8 +63,7 @@ public class SandboxExecutor implements Executor {
      * @return
      */
     @Override
-    public PostOrderResponse postBuyOrder(String figi) {
-
+    public PostOrderResponse postBuyLimitOrder(String figi) {
         Quotation price = sharesService.calcMinBuyPrice(figi);
 
         PostOrderResponse response = sandboxService.postOrderSync(figi,
@@ -72,23 +74,34 @@ public class SandboxExecutor implements Executor {
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString());
 
-        String logMessage = String.format("[figi=%s] Выставлена заявка на покупку по цене %f, orderId=%s", figi, quotationToBigDecimal(price).doubleValue(), response.getOrderId());
-        bus.publish(GlobalBusAddress.LOG.name(), logMessage);
-        log.info(logMessage);
+        eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", quotationToBigDecimal(price).doubleValue(), response.getOrderId()), figi);
 
         return response;
     }
 
     @Override
-    public void cancelBuyOrder(String orderId) {
+    public PostOrderResponse postSellLimitOrder(String figi) {
+        log.info(">>> todo Post Sell Limit Order");
+        return null;
+    }
+
+    @Override
+    public void cancelOrder(String orderId) {
+        log.info(">>> cancel Order Sandbox 1, orderId= " + orderId);
         sandboxService.cancelOrderSync(getAccountId(), orderId);
-        log.info(">>> cancelBuyOrder Sandbox");
+        log.info(">>> cancel Order Sandbox 2, orderId= " + orderId);
     }
 
     @Override
     public PortfolioDto getPortfolio() {
         var portfolio = sandboxService.getPortfolioSync(getAccountId());
         return toDto(portfolio, getAccountId());
+    }
+
+    @Override
+    public Uni<List<OrderState>> getOrders() {
+        return Uni.createFrom()
+                .completionStage(sandboxService.getOrders(getAccountId()));
     }
 
 
