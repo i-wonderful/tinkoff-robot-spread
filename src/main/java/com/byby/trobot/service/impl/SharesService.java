@@ -1,5 +1,6 @@
 package com.byby.trobot.service.impl;
 
+import io.quarkus.cache.CacheResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.Quotation;
@@ -52,21 +53,23 @@ public class SharesService {
      * @param exhanges
      * @return
      */
+    @CacheResult(cacheName = "shares-by-exchage-cache")
     public List<Share> getShares(List<String> exhanges) {
-        List<Share> shares = getShares().stream()
+        return getShares()
+                .stream()
                 .filter(share -> exhanges.contains(share.getExchange()))
                 .collect(Collectors.toList());
-
-        return shares;
     }
 
-    private List<Share> getShares() {
+    @CacheResult(cacheName = "shares-cache")
+    protected List<Share> getShares() {
         return api.getInstrumentsService().getTradableSharesSync()
                 .stream()
                 .filter(share -> Boolean.TRUE.equals(share.getApiTradeAvailableFlag()))
                 .collect(Collectors.toList());
     }
 
+    @CacheResult(cacheName = "ticker-by-figi-cache")
     public String findTickerByFigi(String figi) {
         return getShares().stream()
                 .filter(sh -> figi.equals(sh.getFigi()))
@@ -75,11 +78,10 @@ public class SharesService {
                 .orElse(null);
     }
 
+    @CacheResult(cacheName = "shares-by-ticker-cache")
     public List<Share> findByTicker(List<String> tickers) {
-        List<Share> shares = api.getInstrumentsService().getTradableSharesSync();
-        return shares
+        return getShares()
                 .stream()
-                .filter(el -> Boolean.TRUE.equals(el.getApiTradeAvailableFlag()))
                 .filter(share -> tickers.contains(share.getTicker()))
                 .collect(Collectors.toList());
     }

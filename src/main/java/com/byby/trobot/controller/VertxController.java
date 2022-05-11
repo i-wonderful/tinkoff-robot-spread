@@ -3,6 +3,7 @@ package com.byby.trobot.controller;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.dto.ExchangeOpenDto;
 import com.byby.trobot.service.impl.ExchangeService;
+import com.byby.trobot.service.impl.SharesService;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -23,6 +24,9 @@ public class VertxController {
     ExchangeService exchangeService;
 
     @Inject
+    SharesService sharesService;
+
+    @Inject
     ApplicationProperties properties;
 
     @GET
@@ -33,6 +37,7 @@ public class VertxController {
                 .transform(response -> response.body());
     }
 
+    //BBG004S68BR5
     @GET
     @Path("/testbus")
     public Uni<Void> testEventBus(){
@@ -40,5 +45,13 @@ public class VertxController {
         return Uni.createFrom().voidItem();
     }
 
+    @GET
+    @Path("/ticker")
+    public String getTickerByFigi(){
+
+        sharesService.findByTicker(List.of("NMTP"));
+
+        return sharesService.findTickerByFigi("BBG004S68BR5");
+    }
 
 }
