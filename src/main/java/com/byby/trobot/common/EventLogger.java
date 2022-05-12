@@ -27,14 +27,14 @@ public class EventLogger {
 
     public Uni<Void> log(String message) {
         log.info(message);
-        bus.publish(LOG.name(), message);
+        bus.publish(LOG, message);
         return Uni.createFrom().voidItem();
     }
 
     public Uni<Void> log(String message, String figi) {
         String ticker = sharesService.findTickerByFigi(figi);
         log.info("[" + ticker + "] " + message + ", figi: " + figi);
-        bus.publish(LOG.name(), "[" + ticker + "] " + message);
+        bus.publish(LOG, "[" + ticker + "] " + message);
         return Uni.createFrom().voidItem();
     }
 
@@ -43,7 +43,7 @@ public class EventLogger {
                 .map(figi -> sharesService.findTickerByFigi(figi))
                 .collect(Collectors.joining(","));
         log.info("[" + tickers + "] " + message);
-        bus.publish(LOG.name(), "[" + tickers + "] " + message);
+        bus.publish(LOG, "[" + tickers + "] " + message);
         return Uni.createFrom().voidItem();
     }
 }

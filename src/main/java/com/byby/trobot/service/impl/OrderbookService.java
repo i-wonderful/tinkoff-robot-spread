@@ -2,11 +2,13 @@ package com.byby.trobot.service.impl;
 
 
 import com.byby.trobot.strategy.impl.model.Spread;
+import io.quarkus.cache.CacheResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 import ru.tinkoff.piapi.core.stream.StreamProcessor;
+import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -35,6 +37,7 @@ public class OrderbookService {
             } else if (response.hasPing()) {
                 log.info("пинг сообщение, figi {}", figi);
             } else if (response.hasOrderbook()) {
+                log.info("новый данные по стакану " + response.getOrderbook());
                 listener.accept(response.getOrderbook());
             } else if (response.hasTrade()) {
                 log.info("Новые данные по сделкам: {}", response);
@@ -85,22 +88,8 @@ public class OrderbookService {
                 .subscribeOrderbook(figi);
     }
 
-    public List<Spread> getSpreads(List<Share> share) {
-        List<String> figi = share.stream().map(Share::getFigi).collect(Collectors.toList());
-        return getSpread(figi);
-    }
-
-    public List<Spread> getSpread(List<String> figi) {
-        return figi.stream()
-                .map(f -> getSpread(f))
-                .filter(spread -> !BigDecimal.ZERO.equals(spread.getDiff())) // todo убрать?
-                .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
-                .collect(Collectors.toList());
-    }
-
-    public Spread getSpread(String figi) {
-        var orderBook = api.getMarketDataService().getOrderBookSync(figi, 1);
-        return ServiceUtil.calcSpread(orderBook);
+    public GetOrderBookResponse getOrderbook(String figi) {
+        return api.getMarketDataService().getOrderBookSync(figi, 1);
     }
 
 }

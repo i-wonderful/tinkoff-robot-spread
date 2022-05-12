@@ -7,7 +7,7 @@ import javax.inject.Inject;
 import javax.ws.rs.Path;
 
 
-@Path("/robot")
+@Path("/strategy")
 @ApplicationScoped
 public class StrategyController {
 
@@ -16,6 +16,6 @@ public class StrategyController {
 
     @Path("/start")
     public void go() {
-        strategyManager.go();
+        strategyManager.start();
     }
 }

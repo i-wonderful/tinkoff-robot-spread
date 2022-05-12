@@ -14,7 +14,7 @@ export default {
     },
     methods: {
         onStart() {
-            axios.get("/robot/start")
+            axios.get("/strategy/start")
                 .then(response => {
                     console.log(response);
                     this.isRun = true;
@@ -24,8 +24,14 @@ export default {
                 });
         },
         onStop() {
-            // todo
-            this.isRun = false;
+            axios.get("/strategy/stop")
+                .then(response => {
+                    console.log(response);
+                    this.isRun = false;
+                })
+                .catch(e => {
+                    console.info(e);
+                });
         }
     },
     mounted() {
@@ -62,11 +68,13 @@ export default {
             </div>
         </div>  
         
-        <button @click="onStart">Go</button>
-        <button v-if="isRun">Stop</button>
+        <button @click="onStart" >Go</button>
+        <button @click="onStop" v-if="isRun" >Stop</button>
         
-        <div v-for="(log, index) in logs" style="max-height: 500px">
-            <span>{{logs[index]}}</span><br/>
+        <div class="log-panel">
+            <div v-for="(log, index) in logs" >
+                {{logs[index]}}
+            </div>
         </div>
         
 

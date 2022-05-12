@@ -35,15 +35,15 @@ public class SandboxController {
     ApplicationProperties properties;
 
 
-    @GET
-    @Path("/go")
-    public Response go(){
-        List<String> openExchanges = properties.getRobotExchangeNames();
-        List<Share> shares = sharesService.getShares(openExchanges);
-
-        List<Spread> spread = orderbookService.getSpreads(shares);
-        return Response.ok(spread).build();
-    }
+//    @GET
+//    @Path("/go")
+//    public Response go(){
+//        List<String> openExchanges = properties.getRobotExchangeNames();
+//        List<Share> shares = sharesService.getShares(openExchanges);
+//
+//        List<Spread> spread = sp.getSpreads(shares);
+//        return Response.ok(spread).build();
+//    }
 
 
     // инфа о юзере, не песочница

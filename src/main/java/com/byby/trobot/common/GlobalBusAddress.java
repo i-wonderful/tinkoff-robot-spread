@@ -1,17 +1,18 @@
 package com.byby.trobot.common;
 
 /**
- * Канала в eventBus
+ * Каналы в eventBus
  */
-public enum GlobalBusAddress {
+public class GlobalBusAddress {
     // Вывод основного лога в ui
-    LOG,
+    public static final String LOG = "LOG";
     // Лог ошибок в ui
-    LOG_ERR,
-    // Выставить заяввку на продажу
-    POST_SELL_ORDER;
-
+    public static final String LOG_ERR = "LOG_ERR";
     // Выставить заявку на покупу
     public static final String POST_BUY_ORDER = "POST_BUY_ORDER";
-    public static final String BUY_ORDER = "CANCEL_BUY_ORDER";
+    // Выставить заяввку на продажу
+    public static final String POST_SELL_ORDER = "POST_SELL_ORDER";
+    // Отменить заявку
+    public static final String CANCEL_ORDER = "CANCEL_BUY_ORDER";
+
 }

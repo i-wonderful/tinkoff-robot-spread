@@ -8,17 +8,29 @@ public class Spread {
     private BigDecimal diff;
     private double percent;
 
-    public Spread(String figi, String ticker, BigDecimal diff, double percent) {
-        this.figi = figi;
-        this.ticker = ticker;
-        this.diff = diff;
-        this.percent = percent;
+    private BigDecimal minBuyPrice;
+    private BigDecimal maxAskPrice;
+
+    public Spread() {
     }
 
+    //    public Spread(String figi, String ticker, BigDecimal diff, double percent) {
+//        this.figi = figi;
+//        this.ticker = ticker;
+//        this.diff = diff;
+//        this.percent = percent;
+//    }
+//
     public Spread(String figi, BigDecimal diff, double percent) {
         this.figi = figi;
         this.diff = diff;
         this.percent = percent;
+    }
+
+    public Spread(String figi) {
+        this.figi = figi;
+        this.diff = BigDecimal.ZERO;
+        this.percent = 0.0;
     }
 
     public String getFigi() {
@@ -61,5 +73,21 @@ public class Spread {
                 ", diff=" + diff +
                 ", percent=" + percent +
                 '}';
+    }
+
+    public BigDecimal getMinBuyPrice() {
+        return minBuyPrice;
+    }
+
+    public void setMinBuyPrice(BigDecimal minBuyPrice) {
+        this.minBuyPrice = minBuyPrice;
+    }
+
+    public BigDecimal getMaxAskPrice() {
+        return maxAskPrice;
+    }
+
+    public void setMaxAskPrice(BigDecimal maxAskPrice) {
+        this.maxAskPrice = maxAskPrice;
     }
 }

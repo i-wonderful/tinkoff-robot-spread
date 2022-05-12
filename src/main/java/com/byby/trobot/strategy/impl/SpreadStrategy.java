@@ -5,7 +5,7 @@ import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.OrderbookService;
-import com.byby.trobot.service.impl.ServiceUtil;
+import com.byby.trobot.service.impl.SpreadService;
 import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.strategy.Strategy;
 import com.byby.trobot.strategy.impl.model.OrderPair;
@@ -51,6 +51,9 @@ public class SpreadStrategy implements Strategy {
     ExchangeService exchangeService;
 
     @Inject
+    SpreadService spreadService;
+
+    @Inject
     Instance<Executor> executor;
 
     @Inject
@@ -66,35 +69,25 @@ public class SpreadStrategy implements Strategy {
      */
     @Override
     public List<String> findFigi() {
-        List<String> tickers = properties.getFindBuyTickers();
+        eventLogger.log("Ищем акции...");
 
-        if (tickers != null && !tickers.isEmpty()) {
-            eventLogger.log(String.format("Будем торговать акциями из настроек tickers=%s", tickers));
-            return sharesService.findByTicker(tickers).stream()
-                    .map(Share::getFigi)
-                    .collect(Collectors.toList());
+        List<String> exchanges = exchangeService.getExchangesOpenNow();
+        List<Share> shares = sharesService.getShares(exchanges);
+        eventLogger.log(String.format("Получено %d акций с бирж %s", shares.size(), exchanges));
 
-        } else {
-            eventLogger.log("Ищем акции...");
+        shares = shares.subList(0, 100);// todo
+        eventLogger.log("Отбираем подходящие акции среди первых " + shares.size());
 
-            List<String> exchanges = exchangeService.getExchangesOpenNow();
-            List<Share> shares = sharesService.getShares(exchanges);
-            eventLogger.log(String.format("Получено %d акций с бирж %s", shares.size(), exchanges));
-
-            shares = shares.subList(0, 100);// todo
-            eventLogger.log("Отбираем подходящие акции среди первых " + shares.size());
-
-            List<Spread> spreads = orderbookService.getSpreads(shares)
-                    .stream()
-                    .filter(s -> properties.getRobotSpreadPercent() <= s.getPercent())
-                    .sorted(Comparator.comparingDouble(Spread::getPercent))
-                    .collect(Collectors.toList());
-            log.info(">>> " + spreads);
-            return spreads.stream()
-                    .map(Spread::getFigi)
-                    .limit(properties.getSharesMaxCount())
-                    .collect(Collectors.toList());
-        }
+        List<Spread> spreads = spreadService.getSpreads(shares)
+                .stream()
+                .filter(s -> properties.getRobotSpreadPercent() <= s.getPercent())
+                .sorted(Comparator.comparingDouble(Spread::getPercent))
+                .collect(Collectors.toList());
+        log.info(">>> " + spreads);
+        return spreads.stream()
+                .map(Spread::getFigi)
+                .limit(properties.getSharesMaxCount())
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -112,7 +105,7 @@ public class SpreadStrategy implements Strategy {
 
         // выставляем начальные заявки
         figis.forEach(f -> {
-            Spread spread = orderbookService.getSpread(f);
+            Spread spread = spreadService.getSpread(f);
             if (makeDecisionBuySell(spread.getPercent())) {
                 this.postBuyOptimalLimitOrder(f);
                 this.postSellOptimalLimitOrder(f);
@@ -121,8 +114,10 @@ public class SpreadStrategy implements Strategy {
 
         // подписываемся на стакан
         orderbookService.subscribeOrderBook(figis, (orderBook) -> {
-            Spread spread = ServiceUtil.calcSpread(orderBook);
+            Spread spread = spreadService.calcSpread(orderBook);
             String figi = orderBook.getFigi();
+
+            //orderbookService.calcMinBuyPrice(figi, orderBook.getAsks(0), orderBook.getBids(0));
 
             eventLogger.log("Новые данные по стакану, spread: " + spread.getPercent() + "%", figi);
             OrderPair orderPair = getOpenOrders(figi);
@@ -135,7 +130,7 @@ public class SpreadStrategy implements Strategy {
                         eventLogger.log("Оптимальная заявка на покупку уже есть.", figi);
                     } else {
                         // отменяем предыдущую
-                        bus.send(BUY_ORDER, buy.getOrderId());
+                        bus.send(CANCEL_ORDER, buy.getOrderId());
                         eventLogger.log("Отменена предыдущая заявка buy.", figi);
                         // Выставляем новую
                         postBuyOptimalLimitOrder(figi);
@@ -156,6 +151,8 @@ public class SpreadStrategy implements Strategy {
         });
     }
 
+    // todo переделать для сандбокса и не только
+    @Deprecated
     private boolean checkOptimalBuyPrice(OrderState orderBuy) {
         MoneyValue initialPrice = orderBuy.getInitialSecurityPrice();
         Quotation minBuyPrice = sharesService.calcMinBuyPrice(orderBuy.getFigi());
@@ -180,10 +177,10 @@ public class SpreadStrategy implements Strategy {
 
     private void cancelOrders(OrderPair orderPair) {
         if (orderPair.getBuy() != null) {
-            bus.send(BUY_ORDER, orderPair.getBuy().getOrderId());
+            bus.send(CANCEL_ORDER, orderPair.getBuy().getOrderId());
         }
         if (orderPair.getSell() != null) {
-            bus.send(BUY_ORDER, orderPair.getSell().getOrderId());
+            bus.send(CANCEL_ORDER, orderPair.getSell().getOrderId());
         }
     }
 

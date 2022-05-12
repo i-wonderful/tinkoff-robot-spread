@@ -23,7 +23,7 @@ public class ExceptionMappers {
     @ServerExceptionMapper
     public RestResponse<String> mapException(ApiRuntimeException exception) {
         log.error(">>> ", exception);
-        bus.publish(GlobalBusAddress.LOG.name(), "Exception " + exception.getMessage());
+        bus.publish(GlobalBusAddress.LOG, "Exception " + exception.getMessage());
 
         return RestResponse
                 .status(Response.Status.INTERNAL_SERVER_ERROR,
@@ -33,7 +33,7 @@ public class ExceptionMappers {
     @ServerExceptionMapper
     public RestResponse<String> mapException(StatusRuntimeException e) {
         log.error(">>> ", e);
-        bus.publish(GlobalBusAddress.LOG.name(), "Exception " + e.getMessage());
+        bus.publish(GlobalBusAddress.LOG, "Exception " + e.getMessage());
 
         return RestResponse
                 .status(Response.Status.INTERNAL_SERVER_ERROR,
@@ -43,7 +43,7 @@ public class ExceptionMappers {
     @ServerExceptionMapper
     public RestResponse<String> mapException(IllegalStateException e){
         log.error(">>> ", e);
-        bus.publish(GlobalBusAddress.LOG.name(), "Exception " + e.getMessage());
+        bus.publish(GlobalBusAddress.LOG, "Exception " + e.getMessage());
 
         return RestResponse
                 .status(Response.Status.INTERNAL_SERVER_ERROR,

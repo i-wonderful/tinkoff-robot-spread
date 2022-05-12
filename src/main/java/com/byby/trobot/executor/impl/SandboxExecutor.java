@@ -62,6 +62,7 @@ public class SandboxExecutor implements Executor {
      * @param figi
      * @return
      */
+    // todo цена
     @Override
     public PostOrderResponse postBuyLimitOrder(String figi) {
         Quotation price = sharesService.calcMinBuyPrice(figi);

@@ -1,20 +1,22 @@
 package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
-import com.byby.trobot.dto.ExchangeOpenDto;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.ExchangeService;
+import com.byby.trobot.service.impl.OrderbookService;
+import com.byby.trobot.service.impl.SpreadService;
 import com.byby.trobot.service.impl.SharesService;
-import io.smallrye.mutiny.Multi;
+import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
+import ru.tinkoff.piapi.contract.v1.GetOrderBookResponse;
+import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Response;
 import java.util.List;
 
 /**
@@ -28,12 +30,14 @@ public class VertxController {
 
     @Inject
     ExchangeService exchangeService;
-
     @Inject
     SharesService sharesService;
-
     @Inject
     ApplicationProperties properties;
+    @Inject
+    SpreadService spreadService;
+    @Inject
+    OrderbookService orderbookService;
 
     @Inject
     Instance<Executor> executor;
@@ -67,4 +71,18 @@ public class VertxController {
         executor.get().cancelOrder(orderId);
     }
 
+    @GET
+    @Path("/calcprice")
+    public double calcMinBuyPrice() {
+        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG002B2J5X0");
+        var price = spreadService.calcMinBuyPrice(orderbook);
+        return MapperUtils.quotationToBigDecimal(price).doubleValue();
+    }
+
+    @GET
+    @Path("/spread")
+    public Spread getSpread(){
+        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG002B2J5X0");
+        return spreadService.calcSpread(orderbook);
+    }
 }

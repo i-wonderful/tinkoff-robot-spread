@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.Quotation;
 import ru.tinkoff.piapi.contract.v1.Share;
 import ru.tinkoff.piapi.core.InvestApi;
+import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -26,15 +27,20 @@ public class SharesService {
      * @return
      */
     // todo проверить
+    @Deprecated
     public Quotation calcMinBuyPrice(String figi) {
         var lastPrice = api.getMarketDataService().getLastPricesSync(List.of(figi)).get(0).getPrice();
+        log.info(">>> lastPrice: " + MapperUtils.quotationToBigDecimal(lastPrice));
         var minPriceIncrement = api.getInstrumentsService().getInstrumentByFigiSync(figi).getMinPriceIncrement();
+        log.info(">>> Min price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));
         var price = Quotation.newBuilder()
                 .setUnits(lastPrice.getUnits() - minPriceIncrement.getUnits() * 100)
                 .setNano(lastPrice.getNano() - minPriceIncrement.getNano())
                 .build();
         return price;
     }
+
+
 
     /**
      * Получить список акций с бирж
