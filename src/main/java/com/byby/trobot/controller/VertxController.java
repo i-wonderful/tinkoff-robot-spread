@@ -2,10 +2,7 @@ package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
-import com.byby.trobot.service.impl.ExchangeService;
-import com.byby.trobot.service.impl.OrderbookService;
-import com.byby.trobot.service.impl.SpreadService;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.*;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -38,6 +35,8 @@ public class VertxController {
     SpreadService spreadService;
     @Inject
     OrderbookService orderbookService;
+    @Inject
+    StrategyManagerImpl strategyManager;
 
     @Inject
     Instance<Executor> executor;
@@ -74,15 +73,23 @@ public class VertxController {
     @GET
     @Path("/calcprice")
     public double calcMinBuyPrice() {
-        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG002B2J5X0");
-        var price = spreadService.calcMinBuyPrice(orderbook);
+        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG008HNHZ07");
+        var price = spreadService.calcNextBidPrice(orderbook);
         return MapperUtils.quotationToBigDecimal(price).doubleValue();
     }
 
+    // BBG008HNHZ07 NWLI
     @GET
     @Path("/spread")
-    public Spread getSpread(){
-        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG002B2J5X0");
+    public Spread getSpread() {
+        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG008HNHZ07");
+        System.out.println(orderbook);
         return spreadService.calcSpread(orderbook);
+    }
+
+    @GET
+    @Path("/figi")
+    public List<String> getFigi() {
+        return strategyManager.findFigi();
     }
 }

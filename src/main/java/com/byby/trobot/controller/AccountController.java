@@ -9,7 +9,6 @@ import com.byby.trobot.dto.mapper.OrderMapper;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.ExchangeService;
 import io.smallrye.mutiny.Uni;
-import ru.tinkoff.piapi.contract.v1.OrderState;
 
 import javax.enterprise.context.RequestScoped;
 import javax.enterprise.inject.Instance;
@@ -73,7 +72,7 @@ public class AccountController {
     @GET
     @Path("/orders")
     public Uni<List<OrderStateDto>> getOrders() {
-        return executor.get().getOrders()
+        return executor.get().getMyOrders()
                 .onItem()
                 .transform(orderMapper::toDto);
     }

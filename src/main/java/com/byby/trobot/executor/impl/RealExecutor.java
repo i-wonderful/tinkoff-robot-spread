@@ -11,6 +11,7 @@ import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 import ru.tinkoff.piapi.core.InvestApi;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.math.BigDecimal;
 import java.util.List;
 
 //@Startup
@@ -33,7 +34,7 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public PostOrderResponse postBuyLimitOrder(String figi) {
+    public PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price) {
         log.info(">>> todo. Real. Выставить заявку на покупку");
         // todo
         return null;
@@ -57,7 +58,7 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public Uni<List<OrderState>> getOrders() {
+    public Uni<List<OrderState>> getMyOrders() {
         return Uni.createFrom()
                 .completionStage(api.getOrdersService().getOrders(getAccountId()));
     }

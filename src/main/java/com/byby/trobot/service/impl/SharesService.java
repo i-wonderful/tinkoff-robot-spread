@@ -27,18 +27,18 @@ public class SharesService {
      * @return
      */
     // todo проверить
-    @Deprecated
-    public Quotation calcMinBuyPrice(String figi) {
-        var lastPrice = api.getMarketDataService().getLastPricesSync(List.of(figi)).get(0).getPrice();
-        log.info(">>> lastPrice: " + MapperUtils.quotationToBigDecimal(lastPrice));
-        var minPriceIncrement = api.getInstrumentsService().getInstrumentByFigiSync(figi).getMinPriceIncrement();
-        log.info(">>> Min price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));
-        var price = Quotation.newBuilder()
-                .setUnits(lastPrice.getUnits() - minPriceIncrement.getUnits() * 100)
-                .setNano(lastPrice.getNano() - minPriceIncrement.getNano())
-                .build();
-        return price;
-    }
+//    @Deprecated
+//    public Quotation calcMinBuyPrice(String figi) {
+//        var lastPrice = api.getMarketDataService().getLastPricesSync(List.of(figi)).get(0).getPrice();
+//        log.info(">>> lastPrice: " + MapperUtils.quotationToBigDecimal(lastPrice));
+//        var minPriceIncrement = api.getInstrumentsService().getInstrumentByFigiSync(figi).getMinPriceIncrement();
+//        log.info(">>> Min price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));
+//        var price = Quotation.newBuilder()
+//                .setUnits(lastPrice.getUnits() - minPriceIncrement.getUnits() * 100)
+//                .setNano(lastPrice.getNano() - minPriceIncrement.getNano())
+//                .build();
+//        return price;
+//    }
 
 
 

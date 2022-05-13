@@ -59,18 +59,22 @@ public class StrategyManagerImpl implements StrategyManager {
     public void start() {
         eventLogger.log("Поехали!");
 
+        List<String> figi = findFigi();
+        strategy.start(figi);
+    }
+
+    public List<String> findFigi(){
         List<String> figi = figiFromProperties();
         if (figi.isEmpty()) {
             figi = strategy.findFigi();
         }
         if (figi == null || figi.isEmpty()) {
             eventLogger.log("Не найдены подходящие акции. Измените настройки.");
-            return;
         } else {
             eventLogger.log("Отслеживаем акции", figi);
         }
 
-        strategy.start(figi);
+        return figi;
     }
 
     private List<String> figiFromProperties() {
@@ -90,10 +94,10 @@ public class StrategyManagerImpl implements StrategyManager {
     // todo сделать полностью неблокирующий вызов
     public void postBuyLimitOrder(String figi) {
 
-        PostOrderResponse response = executor.get().postBuyLimitOrder(figi);
-        String orderId = response.getOrderId();
+        //PostOrderResponse response = executor.get().postBuyLimitOrder(figi, );
+        //String orderId = response.getOrderId();
 
-        cacheOrders.put(figi, List.of(orderId));
+       // cacheOrders.put(figi, List.of(orderId));
     }
 
 

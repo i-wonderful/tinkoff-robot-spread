@@ -8,8 +8,10 @@ public class Spread {
     private BigDecimal diff;
     private double percent;
 
-    private BigDecimal minBuyPrice;
-    private BigDecimal maxAskPrice;
+    // bid покупка. максимально выгодная цена для покупки, на шаг выше существующих
+    private BigDecimal nextBidPrice;
+    // ask продажа. максимально выгодная цена продажи, на шаг ниже сужествующих
+    private BigDecimal nextAskPrice;
 
     public Spread() {
     }
@@ -75,19 +77,19 @@ public class Spread {
                 '}';
     }
 
-    public BigDecimal getMinBuyPrice() {
-        return minBuyPrice;
+    public BigDecimal getNextBidPrice() {
+        return nextBidPrice;
     }
 
-    public void setMinBuyPrice(BigDecimal minBuyPrice) {
-        this.minBuyPrice = minBuyPrice;
+    public void setNextBidPrice(BigDecimal nextBidPrice) {
+        this.nextBidPrice = nextBidPrice;
     }
 
-    public BigDecimal getMaxAskPrice() {
-        return maxAskPrice;
+    public BigDecimal getNextAskPrice() {
+        return nextAskPrice;
     }
 
-    public void setMaxAskPrice(BigDecimal maxAskPrice) {
-        this.maxAskPrice = maxAskPrice;
+    public void setNextAskPrice(BigDecimal nextAskPrice) {
+        this.nextAskPrice = nextAskPrice;
     }
 }

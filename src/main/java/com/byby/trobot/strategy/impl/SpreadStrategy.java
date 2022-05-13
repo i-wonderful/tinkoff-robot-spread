@@ -75,13 +75,17 @@ public class SpreadStrategy implements Strategy {
         List<Share> shares = sharesService.getShares(exchanges);
         eventLogger.log(String.format("Получено %d акций с бирж %s", shares.size(), exchanges));
 
-        shares = shares.subList(0, 100);// todo
+        shares = shares.subList(0, 200);// todo
         eventLogger.log("Отбираем подходящие акции среди первых " + shares.size());
 
-        List<Spread> spreads = spreadService.getSpreads(shares)
+        List<Spread> spreadsAll = spreadService.getSpreads(shares)
+                .stream()
+                .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
+                .collect(Collectors.toList());
+        log.info(">>> All spreads: " + spreadsAll);
+        List<Spread> spreads = spreadsAll
                 .stream()
                 .filter(s -> properties.getRobotSpreadPercent() <= s.getPercent())
-                .sorted(Comparator.comparingDouble(Spread::getPercent))
                 .collect(Collectors.toList());
         log.info(">>> " + spreads);
         return spreads.stream()
@@ -107,8 +111,8 @@ public class SpreadStrategy implements Strategy {
         figis.forEach(f -> {
             Spread spread = spreadService.getSpread(f);
             if (makeDecisionBuySell(spread.getPercent())) {
-                this.postBuyOptimalLimitOrder(f);
-                this.postSellOptimalLimitOrder(f);
+//                this.postBuyOptimalLimitOrder(f);
+//                this.postSellOptimalLimitOrder(f);
             }
         });
 
@@ -117,8 +121,7 @@ public class SpreadStrategy implements Strategy {
             Spread spread = spreadService.calcSpread(orderBook);
             String figi = orderBook.getFigi();
 
-            //orderbookService.calcMinBuyPrice(figi, orderBook.getAsks(0), orderBook.getBids(0));
-
+            //spread.get
             eventLogger.log("Новые данные по стакану, spread: " + spread.getPercent() + "%", figi);
             OrderPair orderPair = getOpenOrders(figi);
             if (makeDecisionBuySell(spread.getPercent())) {
@@ -133,11 +136,11 @@ public class SpreadStrategy implements Strategy {
                         bus.send(CANCEL_ORDER, buy.getOrderId());
                         eventLogger.log("Отменена предыдущая заявка buy.", figi);
                         // Выставляем новую
-                        postBuyOptimalLimitOrder(figi);
+                        postBuyOptimalLimitOrder(spread);
                     }
                 } else {
                     // Выставляем
-                    postBuyOptimalLimitOrder(figi);
+                    postBuyOptimalLimitOrder(spread);
                 }
 
 
@@ -155,7 +158,10 @@ public class SpreadStrategy implements Strategy {
     @Deprecated
     private boolean checkOptimalBuyPrice(OrderState orderBuy) {
         MoneyValue initialPrice = orderBuy.getInitialSecurityPrice();
-        Quotation minBuyPrice = sharesService.calcMinBuyPrice(orderBuy.getFigi());
+
+        Quotation minBuyPrice = spreadService.calcNextBidPrice(
+                orderBuy.getFigi(),
+                bigDecimalToQuotation(moneyValueToBigDecimal(initialPrice)));
 
         BigDecimal optimalPrice = quotationToBigDecimal(minBuyPrice);
         BigDecimal currentPrice = moneyValueToBigDecimal(initialPrice);
@@ -166,9 +172,10 @@ public class SpreadStrategy implements Strategy {
         return optimalPrice.compareTo(currentPrice) == 0;
     }
 
-    private void postBuyOptimalLimitOrder(String figi) {
-        bus.send(POST_BUY_ORDER, figi);
-        eventLogger.log("Выставлена заявка buy.", figi);
+    private void postBuyOptimalLimitOrder(Spread spread) {
+        //bus.send(POST_BUY_ORDER, figi);
+        PostOrderResponse response = executor.get().postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
+        eventLogger.log("Выставлена заявка buy.", spread.getFigi());
     }
 
     private void postSellOptimalLimitOrder(String figi) {
@@ -198,7 +205,7 @@ public class SpreadStrategy implements Strategy {
     }
 
     private List<OrderState> getCurrentOpenOrders(String figi) {
-        List<OrderState> orderStates = executor.get().getOrders().await().indefinitely();
+        List<OrderState> orderStates = executor.get().getMyOrders().await().indefinitely();
         return orderStates.stream()
                 .filter(os -> os.getOrderType().equals(OrderType.ORDER_TYPE_LIMIT))
                 .filter(os -> os.getExecutionReportStatus().equals(OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW))

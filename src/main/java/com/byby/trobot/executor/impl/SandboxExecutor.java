@@ -4,6 +4,7 @@ import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SpreadService;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -12,8 +13,10 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 import ru.tinkoff.piapi.core.SandboxService;
+import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,17 +33,19 @@ public class SandboxExecutor implements Executor {
 
     private SharesService sharesService;
     private SandboxService sandboxService;
+    private SpreadService spreadService;
     private EventBus bus;
     private EventLogger eventLogger;
 
     private String accountId;
 
-    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus, EventLogger eventLogger) {
+    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus, EventLogger eventLogger, SpreadService spreadService) {
         log.info(">>> Init sandboxExecutor");
         this.sharesService = sharesService;
         this.sandboxService = api.getSandboxService();
         this.bus = bus;
         this.eventLogger = eventLogger;
+        this.spreadService = spreadService;
     }
 
     @Override
@@ -60,22 +65,21 @@ public class SandboxExecutor implements Executor {
      * Купить акцию
      *
      * @param figi
+     * @param price
      * @return
      */
     // todo цена
     @Override
-    public PostOrderResponse postBuyLimitOrder(String figi) {
-        Quotation price = sharesService.calcMinBuyPrice(figi);
-
+    public PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price) {
         PostOrderResponse response = sandboxService.postOrderSync(figi,
                 1,
-                price,
+                MapperUtils.bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_BUY,
                 getAccountId(),
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString());
 
-        eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", quotationToBigDecimal(price).doubleValue(), response.getOrderId()), figi);
+        eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", price.doubleValue(), response.getOrderId()), figi);
 
         return response;
     }
@@ -100,7 +104,7 @@ public class SandboxExecutor implements Executor {
     }
 
     @Override
-    public Uni<List<OrderState>> getOrders() {
+    public Uni<List<OrderState>> getMyOrders() {
         return Uni.createFrom()
                 .completionStage(sandboxService.getOrders(getAccountId()));
     }

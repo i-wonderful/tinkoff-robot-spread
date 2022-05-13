@@ -6,11 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
-import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
@@ -18,12 +18,18 @@ import java.util.stream.Collectors;
 
 import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 
+/**
+ * Сервис вычисления спредов
+ */
 @ApplicationScoped
 public class SpreadService {
     private static final Logger log = LoggerFactory.getLogger(SpreadService.class);
 
     @Inject
     InvestApi api;
+
+    @Inject
+    SharesService sharesService;
 
     public Spread calcSpread(OrderBook orderBook) {
         String figi = orderBook.getFigi();
@@ -68,51 +74,81 @@ public class SpreadService {
     }
 
 
-
-
     private Spread calcSpread(Order ask, Order bid, String figi) {
         BigDecimal askPrice = quotationToBigDecimal(ask.getPrice());
 
-        BigDecimal minBuyPrice = quotationToBigDecimal(calcMinBuyPrice(figi, bid));
-        BigDecimal maxAskPrice = quotationToBigDecimal(calcMaxAskPrice(figi, ask));
-        BigDecimal diff = maxAskPrice.remainder(minBuyPrice);
+//        log.info(">>> current prices: bid=" + bid.getPrice() + ", ask="+ask.getPrice());
+        BigDecimal nextBidPrice = quotationToBigDecimal(calcNextBidPrice(figi, bid));
+        BigDecimal nextAskPrice = quotationToBigDecimal(calcNextAskPrice(figi, ask));
+//        log.info(">>> Calc optimal prices: bid=" + nextBidPrice + ", ask=" + nextAskPrice);
+        BigDecimal diff = nextAskPrice.subtract(nextBidPrice);
         double percent = calcSpreadPercent(diff, askPrice);
 
         Spread spread = new Spread();
         spread.setFigi(figi);
         spread.setDiff(diff);
         spread.setPercent(percent);
-        spread.setMinBuyPrice(minBuyPrice);
-        spread.setMaxAskPrice(maxAskPrice);
+        spread.setNextBidPrice(nextBidPrice);
+        spread.setNextAskPrice(nextAskPrice);
+        spread.setTicker(sharesService.findTickerByFigi(figi));
 
         return spread;
     }
 
-    private double calcSpreadPercent(BigDecimal diff, BigDecimal askPrice) {
+    /**
+     * Посчитать процент который составляем diff по отношению к price
+     * @param diff
+     * @param price
+     * @return
+     */
+    private double calcSpreadPercent(BigDecimal diff, BigDecimal price) {
+        if (diff.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0.0;
+        }
         return diff
                 .multiply(BigDecimal.valueOf(100.0))
-                .divide(askPrice, 9, RoundingMode.CEILING)
+                .divide(price, 9, RoundingMode.CEILING)
                 .doubleValue();
     }
 
-    public Quotation calcMinBuyPrice(GetOrderBookResponse orderBookResponse) {
+    public Quotation calcNextBidPrice(GetOrderBookResponse orderBookResponse) {
         String figi = orderBookResponse.getFigi();
         Order bid = orderBookResponse.getBids(0);
-        return calcMinBuyPrice(figi, bid);
+        return calcNextBidPrice(figi, bid);
     }
 
-    public Quotation calcMinBuyPrice(String figi, Order bid) {
-//        log.info(">>> Bid price: " + MapperUtils.quotationToBigDecimal(bid.getPrice()));
+    public Quotation calcNextBidPrice(String figi, Order bid) {
+        return calcNextBidPrice(figi, bid.getPrice());
+    }
+
+    /**
+     * Посчитать оптимальную цену для покупки по лимитной заявке.
+     * Цена на одни шаг выше последней заявки не покупку из стакана.
+     *
+     * @param figi
+     * @param bidPrice цена покупки из стакана
+     * @return
+     */
+    public Quotation calcNextBidPrice(String figi, Quotation bidPrice) {
+        //        log.info(">>> Bid price: " + MapperUtils.quotationToBigDecimal(bid.getPrice()));
         var minPriceIncrement = minPriceIncrement(figi);
-//        log.info(">>> price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));
         var price = Quotation.newBuilder()
-                .setUnits(bid.getPrice().getUnits() + minPriceIncrement.getUnits())
-                .setNano(bid.getPrice().getNano() + minPriceIncrement.getNano())
+                .setUnits(bidPrice.getUnits() + minPriceIncrement.getUnits())
+                .setNano(bidPrice.getNano() + minPriceIncrement.getNano())
                 .build();
         return price;
     }
 
-    public Quotation calcMaxAskPrice(String figi, Order ask) {
+
+    /**
+     * Посчитать оптимальныую цену для продажи.
+     * Цена на один шаг ниже последней цены в стакане.
+     *
+     * @param figi
+     * @param ask  цена продажи из стакана
+     * @return
+     */
+    public Quotation calcNextAskPrice(String figi, Order ask) {
 //        log.info(">>> Ask price: " + MapperUtils.quotationToBigDecimal(ask.getPrice()));
         var minPriceIncrement = minPriceIncrement(figi);
 //        log.info(">>> price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));

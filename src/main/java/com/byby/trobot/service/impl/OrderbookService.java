@@ -48,7 +48,7 @@ public class OrderbookService {
 
         api.getMarketDataStreamService()
                 .newStream(ORDERBOOK_STREAM_NAME, processor, onErrorCallback)
-                .subscribeOrderbook(figi);
+                .subscribeOrderbook(figi, 1);
 
         api.getMarketDataStreamService()
                 .newStream("trades_stream", processor, onErrorCallback)
@@ -85,7 +85,7 @@ public class OrderbookService {
     public void unsucscribeOrderbook(List<String> figi) {
         api.getMarketDataStreamService()
                 .getStreamById(ORDERBOOK_STREAM_NAME)
-                .subscribeOrderbook(figi);
+                .unsubscribeOrderbook(figi, 1);
     }
 
     public GetOrderBookResponse getOrderbook(String figi) {
