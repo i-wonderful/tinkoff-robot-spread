@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static com.byby.trobot.dto.mapper.PortfolioMapper.*;
+import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 
 /**
@@ -79,7 +80,7 @@ public class SandboxExecutor implements Executor {
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString());
 
-        eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", price.doubleValue(), response.getOrderId()), figi);
+        //eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", price.doubleValue(), response.getOrderId()), figi);
 
         return response;
     }
@@ -88,6 +89,29 @@ public class SandboxExecutor implements Executor {
     public PostOrderResponse postSellLimitOrder(String figi) {
         log.info(">>> todo Post Sell Limit Order");
         return null;
+    }
+
+    /**
+     * Проверяем будет ли наша виртуальная заявка myBuyOrder оптимальной.
+     * В сандбоксе заявка на существует в реальном стакане,
+     * поэтому ставнивем цену моей заявки и цену на шаг выше стакана.
+     *
+     * @param myBuyOrder заявка песочницы
+     * @param bidFromOrderbook верхняя заявка на покупку из стакана
+     * @return является ли мой заявка оптимальной
+     */
+    @Override
+    public boolean isMyBuyOrderOptimal(OrderState myBuyOrder, Order bidFromOrderbook) {
+        if (bidFromOrderbook == null) {
+            log.warn(">>> Bid form orderbook is null.");
+            return true;
+        }
+        BigDecimal nextBidPrice = quotationToBigDecimal(spreadService.calcNextBidPrice(
+                myBuyOrder.getFigi(),
+                bidFromOrderbook.getPrice()));
+        BigDecimal myBidPrice = moneyValueToBigDecimal(myBuyOrder.getInitialSecurityPrice());
+
+        return  nextBidPrice.compareTo(myBidPrice) == 0;
     }
 
     @Override

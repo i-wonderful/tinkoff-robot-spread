@@ -21,12 +21,13 @@ public class ApplicationInit {
 
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx);
         sockJSHandler.bridge(new SockJSBridgeOptions()
-                .addOutboundPermitted(new PermittedOptions().setAddress("LOG")));
+                .addOutboundPermitted(new PermittedOptions().setAddress("LOG"))
+                .addOutboundPermitted(new PermittedOptions().setAddress("LOG_ORDER")));
         router.route("/eventbus/*").handler(sockJSHandler);
 
-        router.errorHandler(404, routingContext -> {
-            routingContext.response().setStatusCode(302).putHeader("Location", "/index.html").end();
-        });
+//        router.errorHandler(404, routingContext -> {
+//            routingContext.response().setStatusCode(302).putHeader("Location", "/index.html").end();
+//        });
 
         // for test
 //        AtomicInteger atomicInteger = new AtomicInteger();

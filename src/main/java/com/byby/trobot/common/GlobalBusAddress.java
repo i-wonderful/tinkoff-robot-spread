@@ -6,6 +6,8 @@ package com.byby.trobot.common;
 public class GlobalBusAddress {
     // Вывод основного лога в ui
     public static final String LOG = "LOG";
+    // Лог текущих заявок
+    public static final String LOG_ORDER = "LOG_ORDER";
     // Лог ошибок в ui
     public static final String LOG_ERR = "LOG_ERR";
     // Выставить заявку на покупу

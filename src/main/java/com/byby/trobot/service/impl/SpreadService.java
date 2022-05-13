@@ -161,7 +161,8 @@ public class SpreadService {
 
     @CacheResult(cacheName = "min-price-increment")
     protected Quotation minPriceIncrement(String figi) {
-        var minPriceIncrement = api.getInstrumentsService().getInstrumentByFigiSync(figi).getMinPriceIncrement();
-        return minPriceIncrement;
+        return api.getInstrumentsService()
+                .getInstrumentByFigiSync(figi)
+                .getMinPriceIncrement();
     }
 }

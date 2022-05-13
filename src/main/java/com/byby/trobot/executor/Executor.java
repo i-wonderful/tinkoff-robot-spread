@@ -2,6 +2,7 @@ package com.byby.trobot.executor;
 
 import com.byby.trobot.dto.PortfolioDto;
 import io.smallrye.mutiny.Uni;
+import ru.tinkoff.piapi.contract.v1.Order;
 import ru.tinkoff.piapi.contract.v1.OrderState;
 import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 
@@ -19,7 +20,7 @@ public interface Executor {
     Uni<List<OrderState>> getMyOrders();
 
     /**
-     * Выставить лимитныу заявку на покупку по оптимальной цене (на шаг дороже существуюущей)
+     * Выставить лимитную заявку на покупку.
      */
     PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price);
 
@@ -27,4 +28,9 @@ public interface Executor {
      * Выставить лимитную заявку на продажу по лучшей цене (на шаг дешевле существующей)
      */
     PostOrderResponse postSellLimitOrder(String figi);
+
+    /**
+     *
+     */
+    boolean isMyBuyOrderOptimal(OrderState myOrderBuy, Order bidFromOrderbook);
 }

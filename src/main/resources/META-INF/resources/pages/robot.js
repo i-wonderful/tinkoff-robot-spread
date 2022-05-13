@@ -8,7 +8,8 @@ export default {
         return {
             isRun: false,
             logs: [],
-            eb: {},
+            logOrders: [],
+            eventBus: {},
             exchanges: []
         }
     },
@@ -32,20 +33,35 @@ export default {
                 .catch(e => {
                     console.info(e);
                 });
+        },
+        // todo for testing
+        oneTick() {
+            axios.get("/vertx/process");
         }
     },
     mounted() {
-        this.eb = new EventBus('/eventbus');
-        this.eb.onopen = () => {
+        this.eventBus = new EventBus('/eventbus');
+        this.eventBus.onopen = () => {
             console.log(">>> Open Event bus");
-            this.eb.registerHandler('LOG', (error, message) => {
+            this.eventBus.registerHandler('LOG', (error, message) => {
                 this.logs.push(message.body);
-            })
+            });
+            this.eventBus.registerHandler('LOG_ORDER', (error, message) => {
+                this.logOrders.push(message.body);
+            });
         }
 
         axios.get("/account/exchanges")
             .then(response => {
                 this.exchanges = response.data;
+            });
+
+        axios.get("/account/orders")
+            .then(response => {
+                var orders = response.data;
+                for (const order of orders) {
+                    this.logOrders.push(order.ticker + " " + order.orderId + "  " + order.initialPrice);
+                }
             })
     }
     ,
@@ -68,10 +84,21 @@ export default {
             </div>
         </div>  
         
-        <button @click="onStart" >Go</button>
-        <button @click="onStop" v-if="isRun" >Stop</button>
+        <div>
+            <button @click="onStart" >Go</button>
+            <button @click="oneTick">One tick</button>
+            <button @click="onStop" v-if="isRun" >Stop</button>
+        </div>
+        
+        <div>
+            <h5>Заявки</h5>
+            <div v-for="(log, index) in logOrders" >
+                {{logOrders[index]}}
+            </div>
+        </div>
         
         <div class="log-panel">
+            <h5>Основной лог</h5>
             <div v-for="(log, index) in logs" >
                 {{logs[index]}}
             </div>

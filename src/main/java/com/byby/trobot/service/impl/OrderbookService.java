@@ -89,7 +89,11 @@ public class OrderbookService {
     }
 
     public GetOrderBookResponse getOrderbook(String figi) {
-        return api.getMarketDataService().getOrderBookSync(figi, 1);
+        return getOrderbook(figi, 1);
+    }
+
+    public GetOrderBookResponse getOrderbook(String figi, int depth) {
+        return api.getMarketDataService().getOrderBookSync(figi, depth);
     }
 
 }

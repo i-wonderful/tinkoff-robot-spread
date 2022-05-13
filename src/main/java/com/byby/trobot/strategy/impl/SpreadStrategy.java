@@ -23,7 +23,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 import static com.byby.trobot.common.GlobalBusAddress.*;
 
 /**
@@ -110,7 +109,7 @@ public class SpreadStrategy implements Strategy {
         // выставляем начальные заявки
         figis.forEach(f -> {
             Spread spread = spreadService.getSpread(f);
-            if (makeDecisionBuySell(spread.getPercent())) {
+            if (isBigSpread(spread.getPercent())) {
 //                this.postBuyOptimalLimitOrder(f);
 //                this.postSellOptimalLimitOrder(f);
             }
@@ -118,64 +117,78 @@ public class SpreadStrategy implements Strategy {
 
         // подписываемся на стакан
         orderbookService.subscribeOrderBook(figis, (orderBook) -> {
-            Spread spread = spreadService.calcSpread(orderBook);
-            String figi = orderBook.getFigi();
-
-            //spread.get
-            eventLogger.log("Новые данные по стакану, spread: " + spread.getPercent() + "%", figi);
-            OrderPair orderPair = getOpenOrders(figi);
-            if (makeDecisionBuySell(spread.getPercent())) {
-                eventLogger.log("Спред подходящий, проверяем наличие заявок buy/sell.", figi);
-                // проверяем есть ли заявки
-                if (orderPair.getBuy() != null) {
-                    OrderState buy = orderPair.getBuy();
-                    if (checkOptimalBuyPrice(buy)) {
-                        eventLogger.log("Оптимальная заявка на покупку уже есть.", figi);
-                    } else {
-                        // отменяем предыдущую
-                        bus.send(CANCEL_ORDER, buy.getOrderId());
-                        eventLogger.log("Отменена предыдущая заявка buy.", figi);
-                        // Выставляем новую
-                        postBuyOptimalLimitOrder(spread);
-                    }
-                } else {
-                    // Выставляем
-                    postBuyOptimalLimitOrder(spread);
-                }
-
-
-                // todo заявка на продажу
-
-            } else {
-                // снимаем заявки на покупку, продажу если есть
-                cancelOrders(orderPair);
-                eventLogger.log("Спред меньше лимита. Убираем заявки если есть.", figi);
-            }
+            processOrderbook(orderBook);
         });
     }
 
-    // todo переделать для сандбокса и не только
-    @Deprecated
-    private boolean checkOptimalBuyPrice(OrderState orderBuy) {
-        MoneyValue initialPrice = orderBuy.getInitialSecurityPrice();
+    // todo это метод для тестирования
+    public void processOrderbook(GetOrderBookResponse orderBook) {
+        Spread spread = spreadService.calcSpread(orderBook);
+        Order bidOrderbook = orderBook.getBidsCount() > 0 ?
+                orderBook.getBids(0) :
+                null;
+        processOrderbook(spread, bidOrderbook);
+    }
 
-        Quotation minBuyPrice = spreadService.calcNextBidPrice(
-                orderBuy.getFigi(),
-                bigDecimalToQuotation(moneyValueToBigDecimal(initialPrice)));
+    // todo пока паблик для тестирования
+    public void processOrderbook(OrderBook orderBook) {
+        Spread spread = spreadService.calcSpread(orderBook);
+        Order bidOrderbook = orderBook.getBidsCount() > 0 ?
+                orderBook.getBids(0) :
+                null;
+        processOrderbook(spread, bidOrderbook);
+    }
 
-        BigDecimal optimalPrice = quotationToBigDecimal(minBuyPrice);
-        BigDecimal currentPrice = moneyValueToBigDecimal(initialPrice);
+    public void processOrderbook(Spread spread, Order bidOrderbook) {
+        String figi = spread.getFigi();
+        eventLogger.log(String.format("Новые данные по стакану, spread=%f, %f%%", spread.getDiff().doubleValue(),spread.getPercent()), figi);
 
-        log.info(">>> Optimal price: " + optimalPrice);
-        log.info(">>> currentPrice: " + currentPrice);
+        // мои заявки на покупку/продажу
+        OrderPair myOrderPair = getMyCurrentOpenOrders(figi);
 
-        return optimalPrice.compareTo(currentPrice) == 0;
+        // спред слишком маленький
+        if (!isBigSpread(spread.getPercent())) {
+            // снимаем заявки на покупку, продажу если есть
+            cancelOrders(myOrderPair);
+            eventLogger.log("Спред меньше лимита. Убираем заявки если есть.", figi);
+            return;
+        }
+
+        eventLogger.log("Спред подходящий, проверяем наличие заявок buy/sell.", figi);
+
+        // проверяем есть ли заявки
+        OrderState myBid = myOrderPair.getBuy();
+        if (myBid == null) {
+            eventLogger.log("Заявок на покупку еще нет. Выставляем.", figi);
+            postBuyOptimalLimitOrder(spread);
+        } else {
+            if (checkMyBuyOrderOptimal(myBid, bidOrderbook)) {
+                eventLogger.log("Оптимальная заявка на покупку уже есть.", figi);
+            } else {
+                // отменяем предыдущую
+                bus.send(CANCEL_ORDER, myBid.getOrderId());
+                eventLogger.log("Отменена предыдущая заявка buy. orderId=" + myBid.getOrderId(), figi);
+                // Выставляем новую
+                postBuyOptimalLimitOrder(spread);
+            }
+        }
+
+
+        // todo заявка на продажу
+
+
+    }
+
+    // Проверяем что цена моей заявки равна цене лучшей заявки на покупку в стакане.
+    private boolean checkMyBuyOrderOptimal(OrderState myOrderBuy, Order bidFromOrderbook) {
+        return executor.get().isMyBuyOrderOptimal(myOrderBuy, bidFromOrderbook);
     }
 
     private void postBuyOptimalLimitOrder(Spread spread) {
-        //bus.send(POST_BUY_ORDER, figi);
-        PostOrderResponse response = executor.get().postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
-        eventLogger.log("Выставлена заявка buy.", spread.getFigi());
+        //bus.send(POST_BUY_ORDER, figi); todo?
+        BigDecimal price = spread.getNextBidPrice();
+        PostOrderResponse response = executor.get().postBuyLimitOrder(spread.getFigi(), price);
+        eventLogger.logOrderBuyAdd(response.getOrderId(), price.doubleValue(), spread.getFigi());
     }
 
     private void postSellOptimalLimitOrder(String figi) {
@@ -191,9 +204,12 @@ public class SpreadStrategy implements Strategy {
         }
     }
 
-    private OrderPair getOpenOrders(String figi) {
+    /**
+     * Открытые в данный момент пара заявков: на покупку и на продажу
+     */
+    private OrderPair getMyCurrentOpenOrders(String figi) {
         OrderPair orderPair = new OrderPair();
-        List<OrderState> orders = getCurrentOpenOrders(figi);
+        List<OrderState> orders = getMyCurrentOpenOrderStates(figi);
         orders.forEach(orderState -> {
             if (OrderDirection.ORDER_DIRECTION_BUY.equals(orderState.getDirection())) {
                 orderPair.setBuy(orderState);
@@ -204,7 +220,10 @@ public class SpreadStrategy implements Strategy {
         return orderPair;
     }
 
-    private List<OrderState> getCurrentOpenOrders(String figi) {
+    /**
+     * Мои открытые в данный момент лимитные заявки
+     */
+    private List<OrderState> getMyCurrentOpenOrderStates(String figi) {
         List<OrderState> orderStates = executor.get().getMyOrders().await().indefinitely();
         return orderStates.stream()
                 .filter(os -> os.getOrderType().equals(OrderType.ORDER_TYPE_LIMIT))
@@ -214,7 +233,7 @@ public class SpreadStrategy implements Strategy {
     }
 
 
-    private boolean makeDecisionBuySell(double spreadPercent) {
+    private boolean isBigSpread(double spreadPercent) {
         return properties.getRobotSpreadPercent() <= spreadPercent;
     }
 

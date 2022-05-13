@@ -6,8 +6,7 @@ import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.OrderState;
-import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
+import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -44,6 +43,20 @@ public class RealExecutor implements Executor {
     public PostOrderResponse postSellLimitOrder(String figi) {
         log.info(">>> todo. Real. Post Sell Order");
         return null;
+    }
+
+    @Override
+    public boolean isMyBuyOrderOptimal(OrderState myOrderBuy, Order bidFromOrderbook) {
+        if (bidFromOrderbook == null) {
+            log.warn(">>> Bid form orderbook is null.");
+            return true;
+        }
+        MoneyValue myPrice = myOrderBuy.getInitialSecurityPrice();
+        Quotation orderbookPrice = bidFromOrderbook.getPrice();
+        boolean isEquals =
+                myPrice.getUnits() == orderbookPrice.getUnits() &&
+                myPrice.getUnits() == orderbookPrice.getNano();
+        return isEquals;
     }
 
     @Override
