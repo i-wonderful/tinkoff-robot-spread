@@ -1,18 +1,15 @@
 package com.byby.trobot.service.impl;
 
 import com.byby.trobot.common.EventLogger;
-import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.strategy.Strategy;
-import io.quarkus.vertx.ConsumeEvent;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 import ru.tinkoff.piapi.contract.v1.Share;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -55,15 +52,49 @@ public class StrategyManagerImpl implements StrategyManager {
     @Inject
     SharesService sharesService;
 
+    boolean isRun = false;
+
     @Override
     public void start() {
+        if (isRun) {
+            eventLogger.log("Уже запущен");
+            return;
+        }
         eventLogger.log("Поехали!");
-
         List<String> figi = findFigi();
         strategy.start(figi);
+        this.isRun = true;
     }
 
-    public List<String> findFigi(){
+    @Override
+    public void stop() {
+        if (!this.isRun) {
+            eventLogger.log("Не запущен");
+            return;
+        }
+        strategy.stop();
+        this.isRun = false;
+    }
+
+    @Override
+    public void cancelAllOrders() {
+        // todo
+        executor.get().cancelAllOrders();
+    }
+
+    @Override
+    public boolean isRun() {
+        return this.isRun;
+    }
+
+    /**
+     * Ищем кандидатов на покупку.
+     * Если указан параметр robot.strategy.find.buy.tickers, то берем их.
+     * Если не указан, то ищем согласно стратегии.
+     *
+     * @return список figi
+     */
+    public List<String> findFigi() {
         List<String> figi = figiFromProperties();
         if (figi.isEmpty()) {
             figi = strategy.findFigi();
@@ -90,37 +121,32 @@ public class StrategyManagerImpl implements StrategyManager {
         }
     }
 
-    @ConsumeEvent(value = GlobalBusAddress.POST_BUY_ORDER, blocking = true)
-    // todo сделать полностью неблокирующий вызов
-    public void postBuyLimitOrder(String figi) {
-
-        //PostOrderResponse response = executor.get().postBuyLimitOrder(figi, );
-        //String orderId = response.getOrderId();
-
-       // cacheOrders.put(figi, List.of(orderId));
-    }
-
-
-    @ConsumeEvent(value = GlobalBusAddress.CANCEL_ORDER, blocking = true)
-    public void cancelOrder(String orderId) {
-        log.info(">>> Cancel order " + orderId);
-
-        executor.get().cancelOrder(orderId);
-//        eventLogger.log(">>> Cancel Buy Order", figi);
+//    @ConsumeEvent(value = GlobalBusAddress.POST_BUY_ORDER, blocking = true)
+//    // todo сделать полностью неблокирующий вызов
+//    public void postBuyLimitOrder(String figi) {
 //
-//        List<String> orders = cacheOrders.get(figi);
-//        orders.forEach(orderId -> {
-//                    log.info(">>> OrderId " + orderId);
-//                    executor.get().cancelBuyOrder(orderId);
-//                }
-//        );
+//        //PostOrderResponse response = executor.get().postBuyLimitOrder(figi, );
+//        //String orderId = response.getOrderId();
+//
+//       // cacheOrders.put(figi, List.of(orderId));
+//    }
 
-    }
 
-    @Override
-    public void sellAll() {
+//    @ConsumeEvent(value = GlobalBusAddress.CANCEL_ORDER, blocking = true)
+//    public void cancelOrder(String orderId) {
+//        log.info(">>> Cancel order " + orderId);
+//
+//        executor.get().cancelOrder(orderId);
+////        eventLogger.log(">>> Cancel Buy Order", figi);
+////
+////        List<String> orders = cacheOrders.get(figi);
+////        orders.forEach(orderId -> {
+////                    log.info(">>> OrderId " + orderId);
+////                    executor.get().cancelBuyOrder(orderId);
+////                }
+////        );
+//
+//    }
 
-        // todo
-    }
 
 }

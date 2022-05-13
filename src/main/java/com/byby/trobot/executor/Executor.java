@@ -12,6 +12,7 @@ import java.util.List;
 public interface Executor {
     String getAccountId();
     void cancelOrder(String orderId);
+    Uni cancelAllOrders();
     PortfolioDto getPortfolio();
 
     /**
@@ -25,12 +26,24 @@ public interface Executor {
     PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price);
 
     /**
-     * Выставить лимитную заявку на продажу по лучшей цене (на шаг дешевле существующей)
+     * Выставить лимитную заявку на продажу.
      */
-    PostOrderResponse postSellLimitOrder(String figi);
+    PostOrderResponse postSellLimitOrder(String figi, BigDecimal price);
 
     /**
      *
+     *
+     * @param myOrderBuy моя выставленная заявка на покупку
+     * @param bidFromOrderbook верхняя заявка на покупку из стакана
+     * @return является ли моя заявка оптимальной
      */
     boolean isMyBuyOrderOptimal(OrderState myOrderBuy, Order bidFromOrderbook);
+
+    /**
+     *
+     * @param myOrderSell
+     * @param askFromOrderbook
+     * @return
+     */
+    boolean isMySellOrderOptimal(OrderState myOrderSell, Order askFromOrderbook);
 }

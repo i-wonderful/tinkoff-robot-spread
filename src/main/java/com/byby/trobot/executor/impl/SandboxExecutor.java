@@ -23,6 +23,7 @@ import java.util.UUID;
 import static com.byby.trobot.dto.mapper.PortfolioMapper.*;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
+import static ru.tinkoff.piapi.core.utils.MapperUtils.bigDecimalToQuotation;
 
 /**
  * Операции с песочницей
@@ -31,6 +32,7 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 @ApplicationScoped
 public class SandboxExecutor implements Executor {
     private static final Logger log = LoggerFactory.getLogger(SandboxExecutor.class);
+    private static final int QUANTITY_DEFAULT = 1;
 
     private SharesService sharesService;
     private SandboxService sandboxService;
@@ -63,18 +65,13 @@ public class SandboxExecutor implements Executor {
     }
 
     /**
-     * Купить акцию
-     *
-     * @param figi
-     * @param price
-     * @return
+     * Выставить лимитную заявку на покупку.
      */
-    // todo цена
     @Override
     public PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price) {
         PostOrderResponse response = sandboxService.postOrderSync(figi,
-                1,
-                MapperUtils.bigDecimalToQuotation(price),
+                QUANTITY_DEFAULT,
+                bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_BUY,
                 getAccountId(),
                 OrderType.ORDER_TYPE_LIMIT,
@@ -86,15 +83,24 @@ public class SandboxExecutor implements Executor {
     }
 
     @Override
-    public PostOrderResponse postSellLimitOrder(String figi) {
-        log.info(">>> todo Post Sell Limit Order");
-        return null;
+    public PostOrderResponse postSellLimitOrder(String figi, BigDecimal price) {
+        PostOrderResponse response = sandboxService.postOrderSync(figi,
+                QUANTITY_DEFAULT,
+                bigDecimalToQuotation(price),
+                OrderDirection.ORDER_DIRECTION_SELL,
+                getAccountId(),
+                OrderType.ORDER_TYPE_LIMIT,
+                UUID.randomUUID().toString());
+
+        //eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", price.doubleValue(), response.getOrderId()), figi);
+
+        return response;
     }
 
     /**
      * Проверяем будет ли наша виртуальная заявка myBuyOrder оптимальной.
-     * В сандбоксе заявка на существует в реальном стакане,
-     * поэтому ставнивем цену моей заявки и цену на шаг выше стакана.
+     * В сандбоксе заявка не существует в реальном стакане,
+     * поэтому ставнивем цену моей заявки и цену на шаг выше заявки на покупку из стакана.
      *
      * @param myBuyOrder заявка песочницы
      * @param bidFromOrderbook верхняя заявка на покупку из стакана
@@ -114,12 +120,37 @@ public class SandboxExecutor implements Executor {
         return  nextBidPrice.compareTo(myBidPrice) == 0;
     }
 
+    /**
+     * Проверяем будет ли наша виртуальная заявка myOrderSell оптимальной.
+     * В сандбоксе заявка не существует в реальном стакане,
+     * поэтому ставнивем цену моей заявки и цену на шаг ниже заявки на продажу из стакана.
+     *
+     * @param myOrderSell заявка песочницы
+     * @param askFromOrderbook
+     * @return
+     */
+    @Override
+    public boolean isMySellOrderOptimal(OrderState myOrderSell, Order askFromOrderbook) {
+        if (askFromOrderbook == null) {
+            log.warn(">>> Ask form orderbook is null.");
+            return true;
+        }
+        BigDecimal nextAskPrice = quotationToBigDecimal(spreadService.calcNextAskPrice(
+                myOrderSell.getFigi(),
+                askFromOrderbook.getPrice()));
+        BigDecimal myAskPrice = moneyValueToBigDecimal(myOrderSell.getInitialSecurityPrice());
+
+        return nextAskPrice.compareTo(myAskPrice) == 0;
+    }
+
     @Override
     public void cancelOrder(String orderId) {
         log.info(">>> cancel Order Sandbox 1, orderId= " + orderId);
-        sandboxService.cancelOrderSync(getAccountId(), orderId);
+        sandboxService.cancelOrder(getAccountId(), orderId);
         log.info(">>> cancel Order Sandbox 2, orderId= " + orderId);
     }
+
+
 
     @Override
     public PortfolioDto getPortfolio() {
@@ -132,6 +163,23 @@ public class SandboxExecutor implements Executor {
         return Uni.createFrom()
                 .completionStage(sandboxService.getOrders(getAccountId()));
     }
+
+    @Override
+    public Uni cancelAllOrders() {
+        getMyOrders()
+                .subscribe()
+                .with(orderStates -> orderStates.forEach(o -> cancelOrder(o.getOrderId())));
+        return Uni.createFrom().voidItem();
+    }
+
+
+//    public Multi<OrderState> getMyOrders1() {
+//        return Multi.createFrom()
+//                .completionStage(sandboxService.getOrders(getAccountId()));
+
+//        return Uni.createFrom()
+//                .completionStage(sandboxService.getOrders(getAccountId()));
+//    }
 
 
     private Account createNewAccount() {

@@ -97,6 +97,7 @@ public class SpreadService {
 
     /**
      * Посчитать процент который составляем diff по отношению к price
+     *
      * @param diff
      * @param price
      * @return
@@ -117,18 +118,18 @@ public class SpreadService {
         return calcNextBidPrice(figi, bid);
     }
 
+    /**
+     * Посчитать оптимальную цену для покупки по лимитной заявке.
+     * Цена на одни шаг выше последней заявки на покупку из стакана.
+     *
+     * @param figi
+     * @param bid  заявка покупки из стакана
+     * @return
+     */
     public Quotation calcNextBidPrice(String figi, Order bid) {
         return calcNextBidPrice(figi, bid.getPrice());
     }
 
-    /**
-     * Посчитать оптимальную цену для покупки по лимитной заявке.
-     * Цена на одни шаг выше последней заявки не покупку из стакана.
-     *
-     * @param figi
-     * @param bidPrice цена покупки из стакана
-     * @return
-     */
     public Quotation calcNextBidPrice(String figi, Quotation bidPrice) {
         //        log.info(">>> Bid price: " + MapperUtils.quotationToBigDecimal(bid.getPrice()));
         var minPriceIncrement = minPriceIncrement(figi);
@@ -141,20 +142,24 @@ public class SpreadService {
 
 
     /**
-     * Посчитать оптимальныую цену для продажи.
-     * Цена на один шаг ниже последней цены в стакане.
+     * Посчитать оптимальныую цену для продажи по лимитной заявке.
+     * Цена на один шаг ниже последней заявки на продажу из стакана.
      *
      * @param figi
-     * @param ask  цена продажи из стакана
+     * @param ask заявка продажи из стакана
      * @return
      */
     public Quotation calcNextAskPrice(String figi, Order ask) {
-//        log.info(">>> Ask price: " + MapperUtils.quotationToBigDecimal(ask.getPrice()));
+        return calcNextAskPrice(figi, ask.getPrice());
+    }
+
+    public Quotation calcNextAskPrice(String figi, Quotation askPrice) {
+        //        log.info(">>> Ask price: " + MapperUtils.quotationToBigDecimal(ask.getPrice()));
         var minPriceIncrement = minPriceIncrement(figi);
 //        log.info(">>> price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));
         var price = Quotation.newBuilder()
-                .setUnits(ask.getPrice().getUnits() - minPriceIncrement.getUnits())
-                .setNano(ask.getPrice().getNano() - minPriceIncrement.getNano())
+                .setUnits(askPrice.getUnits() - minPriceIncrement.getUnits())
+                .setNano(askPrice.getNano() - minPriceIncrement.getNano())
                 .build();
         return price;
     }

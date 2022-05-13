@@ -40,7 +40,7 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public PostOrderResponse postSellLimitOrder(String figi) {
+    public PostOrderResponse postSellLimitOrder(String figi, BigDecimal price) {
         log.info(">>> todo. Real. Post Sell Order");
         return null;
     }
@@ -55,13 +55,25 @@ public class RealExecutor implements Executor {
         Quotation orderbookPrice = bidFromOrderbook.getPrice();
         boolean isEquals =
                 myPrice.getUnits() == orderbookPrice.getUnits() &&
-                myPrice.getUnits() == orderbookPrice.getNano();
+                        myPrice.getUnits() == orderbookPrice.getNano();
         return isEquals;
+    }
+
+    @Override
+    public boolean isMySellOrderOptimal(OrderState myOrderSell, Order askFromOrderbook) {
+        // todo
+        log.info(">>> isMySellOrderOptimal Real ");
+        return false;
     }
 
     @Override
     public void cancelOrder(String orderId) {
         log.info(">>> cancelBuyOrder Real ");
+    }
+
+    @Override
+    public Uni cancelAllOrders() {
+        return Uni.createFrom().voidItem();
     }
 
     @Override

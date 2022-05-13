@@ -34,6 +34,24 @@ export default {
                     console.info(e);
                 });
         },
+        onCancelAllOrders() {
+            axios.get("/strategy/cancel-all-orders")
+                .then(resp => {
+                    this.getCurrentOrders();
+                });
+
+        },
+        getCurrentOrders() {
+            this.logOrders = [];
+            axios.get("/account/orders")
+                .then(response => {
+                    var orders = response.data;
+                    for (const order of orders) {
+                        this.logOrders.push(order.ticker + " " + order.direction + order.initialPrice + " " + order.currency + " " + order.orderId + "  ");
+                    }
+                })
+        },
+
         // todo for testing
         oneTick() {
             axios.get("/vertx/process");
@@ -56,13 +74,7 @@ export default {
                 this.exchanges = response.data;
             });
 
-        axios.get("/account/orders")
-            .then(response => {
-                var orders = response.data;
-                for (const order of orders) {
-                    this.logOrders.push(order.ticker + " " + order.orderId + "  " + order.initialPrice);
-                }
-            })
+        this.getCurrentOrders();
     }
     ,
 
@@ -87,18 +99,19 @@ export default {
         <div>
             <button @click="onStart" >Go</button>
             <button @click="oneTick">One tick</button>
+            <button @click="onCancelAllOrders">Отменить все заявки</button>
             <button @click="onStop" v-if="isRun" >Stop</button>
         </div>
         
-        <div>
-            <h5>Заявки</h5>
+        <h5>Заявки</h5>
+        <div class="log-panel log-orders-panel">
             <div v-for="(log, index) in logOrders" >
                 {{logOrders[index]}}
             </div>
         </div>
         
+        <h5>Основной лог</h5>
         <div class="log-panel">
-            <h5>Основной лог</h5>
             <div v-for="(log, index) in logs" >
                 {{logs[index]}}
             </div>

@@ -101,6 +101,6 @@ public class VertxController {
     @Path("/process")
     public void processOrderbook() {
         GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG00W9LF2G5", 5);
-        strategy.processOrderbook(orderbook);
+        strategy.processOrderbookTEST(orderbook);
     }
 }

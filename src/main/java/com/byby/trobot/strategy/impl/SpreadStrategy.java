@@ -14,11 +14,13 @@ import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
+import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,13 +60,16 @@ public class SpreadStrategy implements Strategy {
     @Inject
     EventLogger eventLogger;
 
+
+    List<String> figi;
+
     /**
      * Ищем кандидатов на покупку.
-     * Если указан параметр robot.strategy.find.buy.tickers, то берем их.
-     * Если не указан, то ищем спреды среди всех акций
-     * и берем те что больше параметра robot.strategy.spread.percent.
+     * <p>
+     * Берем спреды среди всех акций
+     * и оставляем те где спред больше параметра robot.strategy.spread.percent.
      *
-     * @return список figi
+     * @return
      */
     @Override
     public List<String> findFigi() {
@@ -96,105 +101,150 @@ public class SpreadStrategy implements Strategy {
     @Override
     public void start(List<String> figis) {
         if (figis == null || figis.isEmpty()) {
-            eventLogger.log("!!! Список акций в стратегии не указан");
+            eventLogger.log("!!! Список акций в стратегии не указан. Поменяйте настройки.");
+            return;
         }
+        this.figi = figis;
 
         // подписываемся на сделки
         if (!properties.isSandboxMode()) {
             orderbookService.subscribeTradesStream((orderTrades) -> {
+                // todo? оно надо?
                 log.info(">>> Новые данные по заявке !!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             });
         }
 
         // выставляем начальные заявки
-        figis.forEach(f -> {
+        this.figi.forEach(f -> {
             Spread spread = spreadService.getSpread(f);
             if (isBigSpread(spread.getPercent())) {
-//                this.postBuyOptimalLimitOrder(f);
-//                this.postSellOptimalLimitOrder(f);
+                postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
+                postSellLimitOrder(spread.getFigi(), spread.getNextAskPrice());
             }
         });
 
         // подписываемся на стакан
-        orderbookService.subscribeOrderBook(figis, (orderBook) -> {
+        orderbookService.subscribeOrderBook(this.figi, (orderBook) -> {
             processOrderbook(orderBook);
         });
     }
 
+    @Override
+    public void stop() {
+        orderbookService.unsucscribeOrderbook(this.figi);
+        this.figi = Collections.emptyList();
+    }
+
     // todo это метод для тестирования
-    public void processOrderbook(GetOrderBookResponse orderBook) {
+    public void processOrderbookTEST(GetOrderBookResponse orderBook) {
         Spread spread = spreadService.calcSpread(orderBook);
         Order bidOrderbook = orderBook.getBidsCount() > 0 ?
                 orderBook.getBids(0) :
                 null;
-        processOrderbook(spread, bidOrderbook);
+        Order askOrderbook = orderBook.getAsksCount() > 0 ?
+                orderBook.getAsks(0) :
+                null;
+        processOrderbook(spread, bidOrderbook, askOrderbook);
     }
 
-    // todo пока паблик для тестирования
-    public void processOrderbook(OrderBook orderBook) {
+    private void processOrderbook(OrderBook orderBook) {
         Spread spread = spreadService.calcSpread(orderBook);
         Order bidOrderbook = orderBook.getBidsCount() > 0 ?
                 orderBook.getBids(0) :
                 null;
-        processOrderbook(spread, bidOrderbook);
+        Order askOrderbook = orderBook.getAsksCount() > 0 ?
+                orderBook.getAsks(0) :
+                null;
+        processOrderbook(spread, bidOrderbook, askOrderbook);
     }
 
-    public void processOrderbook(Spread spread, Order bidOrderbook) {
+    public void processOrderbook(Spread spread, Order bidOrderbook, Order askOrderbook) {
         String figi = spread.getFigi();
-        eventLogger.log(String.format("Новые данные по стакану, spread=%f, %f%%", spread.getDiff().doubleValue(),spread.getPercent()), figi);
+        eventLogger.log(String.format("Новые данные по стакану, spread=%f, %f%%", spread.getDiff().doubleValue(), spread.getPercent()), figi);
 
         // мои заявки на покупку/продажу
         OrderPair myOrderPair = getMyCurrentOpenOrders(figi);
 
-        // спред слишком маленький
         if (!isBigSpread(spread.getPercent())) {
+            // спред слишком маленький.
             // снимаем заявки на покупку, продажу если есть
-            cancelOrders(myOrderPair);
             eventLogger.log("Спред меньше лимита. Убираем заявки если есть.", figi);
-            return;
+            cancelOrders(myOrderPair);
+        } else {
+            // спред подходящий.
+            // проверяем есть ли заявки на покупку и выставляем оптимальную
+            eventLogger.log("Спред подходящий. Проверяем наличие заявок buy/sell.", figi);
+            processBuyOrder(myOrderPair.getBuy(), spread, bidOrderbook);
+
+            // todo заявка на продажу
+            processSellOrder(myOrderPair.getSell(), spread, askOrderbook);
         }
+    }
 
-        eventLogger.log("Спред подходящий, проверяем наличие заявок buy/sell.", figi);
+    private void processSellOrder(OrderState myAsk, Spread spread, Order askOrderbook) {
+        String figi = spread.getFigi();
+        if (myAsk == null) {
+            eventLogger.log("Заявок на продажу еще нет. Выставляем.", figi);
+            postSellLimitOrder(figi, spread.getNextAskPrice());
+        } else {
+            if (isMySellOrderOptimal(myAsk, askOrderbook)) {
+                eventLogger.log("Оптимальная заявка на продажу уже есть.", figi);
+            } else {
+                // отменяем предыдущую
+                bus.send(CANCEL_ORDER, myAsk.getOrderId());
+                eventLogger.logOrderCancel(myAsk.getOrderId(), figi);
+                // Выставляем новую
+                postSellLimitOrder(figi, spread.getNextAskPrice());
+            }
+        }
+    }
 
-        // проверяем есть ли заявки
-        OrderState myBid = myOrderPair.getBuy();
+    private void processBuyOrder(OrderState myBid, Spread spread, Order bidOrderbook) {
+        String figi = spread.getFigi();
         if (myBid == null) {
             eventLogger.log("Заявок на покупку еще нет. Выставляем.", figi);
-            postBuyOptimalLimitOrder(spread);
+            postBuyLimitOrder(figi, spread.getNextBidPrice());
         } else {
-            if (checkMyBuyOrderOptimal(myBid, bidOrderbook)) {
-                eventLogger.log("Оптимальная заявка на покупку уже есть.", figi);
+            if (isMyBuyOrderOptimal(myBid, bidOrderbook)) {
+                eventLogger.log("Оптимальная заявка на покупку уже есть. price=" + MapperUtils.moneyValueToBigDecimal(myBid.getInitialSecurityPrice()), figi);
             } else {
                 // отменяем предыдущую
                 bus.send(CANCEL_ORDER, myBid.getOrderId());
-                eventLogger.log("Отменена предыдущая заявка buy. orderId=" + myBid.getOrderId(), figi);
+                eventLogger.logOrderCancel(myBid.getOrderId(), figi);
                 // Выставляем новую
-                postBuyOptimalLimitOrder(spread);
+                postBuyLimitOrder(figi, spread.getNextBidPrice());
             }
         }
-
-
-        // todo заявка на продажу
-
-
     }
 
-    // Проверяем что цена моей заявки равна цене лучшей заявки на покупку в стакане.
-    private boolean checkMyBuyOrderOptimal(OrderState myOrderBuy, Order bidFromOrderbook) {
+    // Проверяем что моя заявка на покупку на вершине стакана
+    private boolean isMyBuyOrderOptimal(OrderState myOrderBuy, Order bidFromOrderbook) {
         return executor.get().isMyBuyOrderOptimal(myOrderBuy, bidFromOrderbook);
     }
 
-    private void postBuyOptimalLimitOrder(Spread spread) {
-        //bus.send(POST_BUY_ORDER, figi); todo?
-        BigDecimal price = spread.getNextBidPrice();
-        PostOrderResponse response = executor.get().postBuyLimitOrder(spread.getFigi(), price);
-        eventLogger.logOrderBuyAdd(response.getOrderId(), price.doubleValue(), spread.getFigi());
+    private boolean isMySellOrderOptimal(OrderState myOrderSell, Order askFromOrderbook) {
+        return executor.get().isMySellOrderOptimal(myOrderSell, askFromOrderbook);
     }
 
-    private void postSellOptimalLimitOrder(String figi) {
-        // todo
+    /**
+     * Выставить лимитную заявку на покупку.
+     */
+    private void postBuyLimitOrder(String figi, BigDecimal price) {
+        PostOrderResponse response = executor.get().postBuyLimitOrder(figi, price);
+        eventLogger.logOrderBuyAdd(response.getOrderId(), price.doubleValue(), figi);
     }
 
+    /**
+     * Выставить лимитную заявку на продажу
+     */
+    private void postSellLimitOrder(String figi, BigDecimal price) {
+        PostOrderResponse response = executor.get().postSellLimitOrder(figi, price);
+        eventLogger.logOrderSellAdd(response.getOrderId(), price.doubleValue(), figi);
+    }
+
+    /**
+     * Отменить заявки.
+     */
     private void cancelOrders(OrderPair orderPair) {
         if (orderPair.getBuy() != null) {
             bus.send(CANCEL_ORDER, orderPair.getBuy().getOrderId());
@@ -233,6 +283,12 @@ public class SpreadStrategy implements Strategy {
     }
 
 
+    /**
+     * Достаточно ли большой спред чтобы выставить заявки.
+     *
+     * @param spreadPercent
+     * @return
+     */
     private boolean isBigSpread(double spreadPercent) {
         return properties.getRobotSpreadPercent() <= spreadPercent;
     }
