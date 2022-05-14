@@ -10,12 +10,9 @@ export default {
             portfolio: {
                 accountId: "",
                 sandbox: "",
-                balance: {
-                    value: ""
-                },
-                balanceUsd: {
-                    value: ""
-                },
+                balanceRub: "",
+                balanceUsd: "",
+                totalAmountCurrencies: "",
                 expectedYeld: "",
                 totalAmountShares: {
                     value: ""
@@ -33,6 +30,12 @@ export default {
                 .catch(error => {
                     console.info(error);
                 });
+        },
+        onRecreateSandbox(){
+            axios.get("/account/recreate-sandbox")
+                .then(() => {
+                    this.getPortfolio()
+                })
         }
     }, mounted() {
         this.getPortfolio();
@@ -46,15 +49,21 @@ export default {
             <div class="col-9"><b>{{portfolio.sandbox}}</b></div>
             <div class="col-3">Account Id:</div>
             <div class="col-9">{{portfolio.accountId}}</div>
-            <div class="col-3">Баланс RUB:</div>
-            <div class="col-9">{{portfolio.balance.value}}</div>
-            <div class="col-3">Баланс USD:</div>
-            <div class="col-9">{{portfolio.balanceUsd.value}}</div>
+            <div class="col-3">Баланс rub:</div>
+            <div class="col-9">{{portfolio.balanceRub}}</div>
+            <div class="col-3">Баланс usd:</div>
+            <div class="col-9">{{portfolio.balanceUsd}}</div>
+            <div class="col-3">Общая стоимость валют в портфеле, rub </div>
+            <div class="col-9">{{portfolio.totalAmountCurrencies}}</div>
             <div class="col-3">Ожидаемая доходность:</div>
             <div class="col-9">{{portfolio.expectedYeld}}</div>
             <div class="col-3">Всего куплено акций на сумму:</div>
             <div class="col-9">{{portfolio.totalAmountShares.value}}</div>
         </div>
+        
+        <br/>
+        <button @click="onRecreateSandbox" v-if="portfolio.sandbox">Пересоздать аккаунт</button>
+        <button @click="getPortfolio">Обновить</button>
         <br/>  
                 <h3>Акции</h3> 
                 <table >
@@ -77,7 +86,7 @@ export default {
                         </tr>
                     </tbody>
             </table>
-        <button @click="getPortfolio">Обновить</button>
+        
       </div>
     `,
 };

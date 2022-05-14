@@ -31,12 +31,15 @@ public class PortfolioMapper {
     @ConfigProperty(name = "tinkoff.figi.usd")
     String tinkoffFigiUsd;
 
+    @ConfigProperty(name = "tinkoff.figi.rub")
+    String tinkoffFigiRub;
+
     public PortfolioDto toDto(PortfolioResponse portfolio, String accountId) {
 
         PortfolioDto dto = new PortfolioDto(true, accountId);
 
         var totalAmountCurrencies = portfolio.getTotalAmountCurrencies();
-        dto.setBalance(toDto(totalAmountCurrencies));
+        dto.setTotalAmountCurrencies(moneyValueToBigDecimal(totalAmountCurrencies));
         log.info("общая стоимость валют в портфеле {}", totalAmountCurrencies);
 
         var totalAmountShares = portfolio.getTotalAmountShares();
@@ -51,7 +54,9 @@ public class PortfolioMapper {
         for (int i = 0; i < positions.size(); i++) {
             PortfolioPosition position = positions.get(i);
             if (tinkoffFigiUsd.equals(position.getFigi())) {
-                dto.setBalanceUsd(toDto(position.getQuantity(), "USD"));
+                dto.setBalanceUsd(quotationToBigDecimal(position.getQuantity()));
+            } else if (tinkoffFigiRub.equals(position.getFigi())){
+                dto.setBalanceRub(quotationToBigDecimal(position.getQuantity()));
             } else {
                 dto.addPosition(toDto(position));
             }

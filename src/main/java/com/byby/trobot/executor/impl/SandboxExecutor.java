@@ -1,9 +1,11 @@
 package com.byby.trobot.executor.impl;
 
 import com.byby.trobot.common.EventLogger;
+import com.byby.trobot.config.SandboxProperties;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.SandboxAccountService;
 import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.service.impl.SpreadService;
 import io.quarkus.arc.lookup.LookupIfProperty;
@@ -20,18 +22,17 @@ import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static com.byby.trobot.dto.mapper.PortfolioMapper.*;
-import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
-import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
-import static ru.tinkoff.piapi.core.utils.MapperUtils.bigDecimalToQuotation;
+import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 
 /**
  * Операции с песочницей
  */
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "true")
 @ApplicationScoped
-public class SandboxExecutor implements Executor {
+public class SandboxExecutor implements Executor, SandboxAccountService {
     private static final Logger log = LoggerFactory.getLogger(SandboxExecutor.class);
     private static final int QUANTITY_DEFAULT = 1;
 
@@ -39,17 +40,15 @@ public class SandboxExecutor implements Executor {
     private SandboxService sandboxService;
     private SpreadService spreadService;
     private PortfolioMapper portfolioMapper;
-    private EventBus bus;
-    private EventLogger eventLogger;
+    private SandboxProperties properties;
 
     private String accountId;
 
-    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus, EventLogger eventLogger, SpreadService spreadService, PortfolioMapper portfolioMapper) {
-        log.info(">>> Init sandboxExecutor");
+    public SandboxExecutor(SandboxProperties properties, InvestApi api, SharesService sharesService, SpreadService spreadService, PortfolioMapper portfolioMapper) {
+        log.info(">>> Init sandboxExecutor ");
+        this.properties = properties;
         this.sharesService = sharesService;
         this.sandboxService = api.getSandboxService();
-        this.bus = bus;
-        this.eventLogger = eventLogger;
         this.spreadService = spreadService;
         this.portfolioMapper = portfolioMapper;
     }
@@ -61,8 +60,8 @@ public class SandboxExecutor implements Executor {
                     .stream()
                     .filter(account -> AccountStatus.ACCOUNT_STATUS_OPEN.equals(account.getStatus()))
                     .findFirst()
-                    .orElseGet(this::createNewAccount)
-                    .getId();
+                    .map(Account::getId)
+                    .orElseGet(this::createNewAccount);
         }
         return accountId;
     }
@@ -72,32 +71,24 @@ public class SandboxExecutor implements Executor {
      */
     @Override
     public PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price) {
-        PostOrderResponse response = sandboxService.postOrderSync(figi,
+        return sandboxService.postOrderSync(figi,
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_BUY,
                 getAccountId(),
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString());
-
-        //eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", price.doubleValue(), response.getOrderId()), figi);
-
-        return response;
     }
 
     @Override
     public PostOrderResponse postSellLimitOrder(String figi, BigDecimal price) {
-        PostOrderResponse response = sandboxService.postOrderSync(figi,
+        return  sandboxService.postOrderSync(figi,
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_SELL,
                 getAccountId(),
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString());
-
-        //eventLogger.log(String.format("Выставлена лимитная заявка на покупку по цене %f, orderId=%s", price.doubleValue(), response.getOrderId()), figi);
-
-        return response;
     }
 
     /**
@@ -175,20 +166,21 @@ public class SandboxExecutor implements Executor {
         return Uni.createFrom().voidItem();
     }
 
+    @Override
+    public void recreateSandbox() {
+        sandboxService.closeAccount(getAccountId());
+        this.accountId = createNewAccount();
+    }
 
-//    public Multi<OrderState> getMyOrders1() {
-//        return Multi.createFrom()
-//                .completionStage(sandboxService.getOrders(getAccountId()));
-
-//        return Uni.createFrom()
-//                .completionStage(sandboxService.getOrders(getAccountId()));
-//    }
-
-
-    private Account createNewAccount() {
-        // todo
-        log.info(">>> Create new account");
-        return null;
+    private String createNewAccount() {
+        log.info(">>> Create new sandbox account");
+        String accountId = sandboxService.openAccountSync();
+        MoneyValue balanceRub = bigDecimalToMoneyValue(properties.getInitBalanceRub());
+        MoneyValue balanceUsd = bigDecimalToMoneyValue(properties.getInitBalanceUsd(), "USD");
+        CompletableFuture payRub = sandboxService.payIn(accountId, balanceRub);
+        CompletableFuture payUsd = sandboxService.payIn(accountId, balanceUsd);
+        CompletableFuture.allOf(payRub, payUsd).join();
+        return accountId;
     }
 
 }

@@ -7,8 +7,9 @@ import java.util.List;
 public class PortfolioDto {
     private boolean isSandbox;
     private String accountId;
-    private MoneyDto balance;
-    private MoneyDto balanceUsd;
+    private BigDecimal balanceRub;
+    private BigDecimal balanceUsd;
+    private BigDecimal totalAmountCurrencies;
     private MoneyDto totalAmountShares;
     private List<PortfolioPositionDto> positions;
     private BigDecimal expectedYeld;
@@ -34,12 +35,12 @@ public class PortfolioDto {
         this.accountId = accountId;
     }
 
-    public MoneyDto getBalance() {
-        return balance;
+    public BigDecimal getBalanceRub() {
+        return balanceRub;
     }
 
-    public void setBalance(MoneyDto balance) {
-        this.balance = balance;
+    public void setBalanceRub(BigDecimal balance) {
+        this.balanceRub = balance;
     }
 
     public MoneyDto getTotalAmountShares() {
@@ -65,11 +66,11 @@ public class PortfolioDto {
         this.positions.add(positionDto);
     }
 
-    public MoneyDto getBalanceUsd() {
+    public BigDecimal getBalanceUsd() {
         return balanceUsd;
     }
 
-    public void setBalanceUsd(MoneyDto balanceUsd) {
+    public void setBalanceUsd(BigDecimal balanceUsd) {
         this.balanceUsd = balanceUsd;
     }
 
@@ -79,5 +80,13 @@ public class PortfolioDto {
 
     public void setExpectedYeld(BigDecimal expectedYeld) {
         this.expectedYeld = expectedYeld;
+    }
+
+    public BigDecimal getTotalAmountCurrencies() {
+        return totalAmountCurrencies;
+    }
+
+    public void setTotalAmountCurrencies(BigDecimal totalAmountCurrencies) {
+        this.totalAmountCurrencies = totalAmountCurrencies;
     }
 }

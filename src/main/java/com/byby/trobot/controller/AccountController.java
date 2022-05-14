@@ -7,6 +7,7 @@ import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.SettingsRobotDto;
 import com.byby.trobot.dto.mapper.OrderMapper;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.SandboxAccountService;
 import com.byby.trobot.service.impl.ExchangeService;
 import io.smallrye.mutiny.Uni;
 
@@ -34,6 +35,9 @@ public class AccountController {
 
     @Inject
     ExchangeService exchangeService;
+
+    @Inject
+    SandboxAccountService sandboxAccountService;
 
     @Inject
     OrderMapper orderMapper;
@@ -75,5 +79,15 @@ public class AccountController {
         return executor.get().getMyOrders()
                 .onItem()
                 .transform(orderMapper::toDto);
+    }
+
+    /**
+     * Пересоздать аккаунт песочницы
+     */
+    @GET
+    @Path("/recreate-sandbox")
+    public Uni recreateSandbox() {
+        sandboxAccountService.recreateSandbox();
+        return Uni.createFrom().voidItem();
     }
 }
