@@ -2,6 +2,7 @@ package com.byby.trobot.executor.impl;
 
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.dto.PortfolioDto;
+import com.byby.trobot.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.service.impl.SpreadService;
@@ -37,18 +38,20 @@ public class SandboxExecutor implements Executor {
     private SharesService sharesService;
     private SandboxService sandboxService;
     private SpreadService spreadService;
+    private PortfolioMapper portfolioMapper;
     private EventBus bus;
     private EventLogger eventLogger;
 
     private String accountId;
 
-    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus, EventLogger eventLogger, SpreadService spreadService) {
+    public SandboxExecutor(InvestApi api, SharesService sharesService, EventBus bus, EventLogger eventLogger, SpreadService spreadService, PortfolioMapper portfolioMapper) {
         log.info(">>> Init sandboxExecutor");
         this.sharesService = sharesService;
         this.sandboxService = api.getSandboxService();
         this.bus = bus;
         this.eventLogger = eventLogger;
         this.spreadService = spreadService;
+        this.portfolioMapper = portfolioMapper;
     }
 
     @Override
@@ -150,12 +153,12 @@ public class SandboxExecutor implements Executor {
         log.info(">>> cancel Order Sandbox 2, orderId= " + orderId);
     }
 
-
-
     @Override
-    public PortfolioDto getPortfolio() {
-        var portfolio = sandboxService.getPortfolioSync(getAccountId());
-        return toDto(portfolio, getAccountId());
+    public Uni<PortfolioDto> getPortfolio() {
+        return Uni.createFrom()
+                .completionStage(sandboxService.getPortfolio(getAccountId()))
+                .onItem()
+                .transform(portfolioResponse -> portfolioMapper.toDto(portfolioResponse, getAccountId()));
     }
 
     @Override

@@ -44,7 +44,7 @@ public class AccountController {
     @GET
     @Path("/portfolio")
     public Uni<PortfolioDto> getPortfolio() {
-        return Uni.createFrom().item(executor.get().getPortfolio());
+        return executor.get().getPortfolio();
     }
 
     /**

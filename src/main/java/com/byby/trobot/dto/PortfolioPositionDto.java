@@ -3,8 +3,12 @@ package com.byby.trobot.dto;
 import java.math.BigDecimal;
 
 public class PortfolioPositionDto {
+    private String ticker;
     private String figi;
+    private String name;
     private long quantity;
+    private BigDecimal averagePrice;
+    private String currency;
     private BigDecimal expectedYield;
 
     public String getFigi() {
@@ -29,5 +33,37 @@ public class PortfolioPositionDto {
 
     public void setExpectedYield(BigDecimal expectedYield) {
         this.expectedYield = expectedYield;
+    }
+
+    public void setTicker(String ticker) {
+        this.ticker = ticker;
+    }
+
+    public String getTicker() {
+        return ticker;
+    }
+
+    public BigDecimal getAveragePrice() {
+        return averagePrice;
+    }
+
+    public void setAveragePrice(BigDecimal averagePrice) {
+        this.averagePrice = averagePrice;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
     }
 }

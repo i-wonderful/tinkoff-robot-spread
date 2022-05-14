@@ -27,6 +27,7 @@ public class ApplicationInit {
                 .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ORDER)));
         router.route("/eventbus/*").handler(sockJSHandler);
 
+        vertx.eventBus().unregisterCodec(OrderStateDtoCodec.NAME);
         vertx.eventBus().registerCodec(new OrderStateDtoCodec());
 
 //        router.errorHandler(404, routingContext -> {

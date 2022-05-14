@@ -40,7 +40,7 @@ export default {
 
     template: `
       <div>
-        <h1>{{title}}</h1>
+        <h3>{{title}}</h3>
         <div class="grid">
             <div class="col-3">Режим песочницы:</div>
             <div class="col-9"><b>{{portfolio.sandbox}}</b></div>
@@ -54,17 +54,29 @@ export default {
             <div class="col-9">{{portfolio.expectedYeld}}</div>
             <div class="col-3">Всего куплено акций на сумму:</div>
             <div class="col-9">{{portfolio.totalAmountShares.value}}</div>
-            <div class="col-3">Акции:</div>
-            <div class="col-9">
-                <ul>
-                    <li v-for='position in portfolio.positions'>
-                        Figi:<b>{{ position.figi }}</b> <span></span> 
-                        количество: {{ position.quantity}} 
-                        доходность: {{position.expectedYield}}
-                    </li>
-                </ul>
-            </div>
         </div>
+        <br/>  
+                <h3>Акции</h3> 
+                <table >
+                    <thead>
+                        <tr>
+                            <th>Тикер</th>
+                            <th>Название</th>
+                            <th>Количество</th>
+                            <th>Средняя цена</th>
+                            <th>Ожидаемая доходность</th>
+                        </tr>
+                    </thead>
+                    <tbody>       
+                        <tr v-for="position in portfolio.positions" >
+                            <td>{{position.ticker}}</td>
+                            <td>{{position.name}}</td>
+                            <td>{{position.quantity}}</td>
+                            <td>{{position.averagePrice}} {{position.currency}}</td>
+                            <td>{{position.expectedYield}}</td>
+                        </tr>
+                    </tbody>
+            </table>
         <button @click="getPortfolio">Обновить</button>
       </div>
     `,

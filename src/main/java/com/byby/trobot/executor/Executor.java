@@ -9,14 +9,22 @@ import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * Вызов песочницы или реальных сервисов,
+ * в зависимости от настройки robot.sandbox.mode
+ */
 public interface Executor {
     String getAccountId();
     void cancelOrder(String orderId);
     Uni cancelAllOrders();
-    PortfolioDto getPortfolio();
 
     /**
-     * Метод получения списка активных заявок по счёту.
+     * Получить портфолио
+     */
+    Uni<PortfolioDto> getPortfolio();
+
+    /**
+     * Получить список активных заявок по счёту.
      */
     Uni<List<OrderState>> getMyOrders();
 

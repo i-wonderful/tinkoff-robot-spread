@@ -13,7 +13,6 @@ import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
 import java.util.List;
 
-//@Startup
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "false")
 @ApplicationScoped
 public class RealExecutor implements Executor {
@@ -77,7 +76,7 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public PortfolioDto getPortfolio() {
+    public Uni<PortfolioDto> getPortfolio() {
         // todo
         return null;
     }

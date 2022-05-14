@@ -106,20 +106,24 @@ export default {
         <h5>Заявки</h5>
         <div>
             <table class="table">
-                <tr>
-                    <th>Тикер</th>
-                    <th>Статус</th>
-                    <th>Тип</th>
-                    <th>Цена</th>
-                    <th>orderId</th>
-                </tr>   
-                <tr v-for="(order, index) in logOrders" >
-                    <td>{{order.ticker}}</td>
-                    <td>{{order.status}}</td>
-                    <td>{{order.direction}}</td>
-                    <td>{{order.initialPrice}} {{order.currency}}</td>
-                    <td>{{order.orderId}}</td>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>Тикер</th>
+                        <th>Статус</th>
+                        <th>Тип</th>
+                        <th>Цена</th>
+                        <th>orderId</th>
+                    </tr>
+                </thead>
+                <tbody>       
+                    <tr v-for="(order, index) in logOrders" >
+                        <td>{{order.ticker}}</td>
+                        <td>{{order.status}}</td>
+                        <td>{{order.direction}}</td>
+                        <td>{{order.initialPrice}} {{order.currency}}</td>
+                        <td>{{order.orderId}}</td>
+                    </tr>
+                </tbody>
             </table>
             
         </div>

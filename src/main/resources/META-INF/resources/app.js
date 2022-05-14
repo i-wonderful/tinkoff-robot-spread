@@ -52,11 +52,13 @@ export default {
             <nav class="nav">
                 <div class="nav-left">
                     <div class="tabs">
-                    <a class="active" v-on:click="page = ''">Home</a>
+                    <button class="active" v-on:click="page = ''" class="button button-clear">
+                        Home
+                    </button>
                     <template v-for="item, index in pages" key="item.name">
-                        <a v-on:click="page = index">
+                        <button v-on:click="page = index" class="button button-clear">
                             {{ item.name }}
-                        </a>
+                        </button>
                     </template>
                     </div>
                 </div>               
