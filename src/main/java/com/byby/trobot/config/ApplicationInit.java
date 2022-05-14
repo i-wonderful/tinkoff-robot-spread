@@ -1,5 +1,8 @@
 package com.byby.trobot.config;
 
+import static com.byby.trobot.common.GlobalBusAddress.*;
+
+import com.byby.trobot.dto.codec.OrderStateDtoCodec;
 import io.vertx.ext.bridge.PermittedOptions;
 import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions;
 import io.vertx.mutiny.core.Vertx;
@@ -9,7 +12,6 @@ import io.vertx.mutiny.ext.web.handler.sockjs.SockJSHandler;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @ApplicationScoped
 public class ApplicationInit {
@@ -21,9 +23,11 @@ public class ApplicationInit {
 
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx);
         sockJSHandler.bridge(new SockJSBridgeOptions()
-                .addOutboundPermitted(new PermittedOptions().setAddress("LOG"))
-                .addOutboundPermitted(new PermittedOptions().setAddress("LOG_ORDER")));
+                .addOutboundPermitted(new PermittedOptions().setAddress(LOG))
+                .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ORDER)));
         router.route("/eventbus/*").handler(sockJSHandler);
+
+        vertx.eventBus().registerCodec(new OrderStateDtoCodec());
 
 //        router.errorHandler(404, routingContext -> {
 //            routingContext.response().setStatusCode(302).putHeader("Location", "/index.html").end();

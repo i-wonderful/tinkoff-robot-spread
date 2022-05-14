@@ -2,7 +2,10 @@ package com.byby.trobot.dto.mapper;
 
 import com.byby.trobot.dto.OrderStateDto;
 import com.byby.trobot.service.impl.SharesService;
+import ru.tinkoff.piapi.contract.v1.OrderDirection;
+import ru.tinkoff.piapi.contract.v1.OrderExecutionReportStatus;
 import ru.tinkoff.piapi.contract.v1.OrderState;
+import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
@@ -25,27 +28,45 @@ public class OrderMapper {
     public OrderStateDto toDto(OrderState orderState) {
         OrderStateDto dto = new OrderStateDto();
         dto.setOrderId(orderState.getOrderId());
-        String status = null;
-        switch (orderState.getExecutionReportStatus()) {
-            case EXECUTION_REPORT_STATUS_NEW: status = "Новая"; break;
-            case EXECUTION_REPORT_STATUS_FILL: status = "Исполнена"; break;
-            case EXECUTION_REPORT_STATUS_REJECTED: status = "Отклонена"; break;
-            case EXECUTION_REPORT_STATUS_CANCELLED: status = "Отменена пользователем"; break;
-            case EXECUTION_REPORT_STATUS_PARTIALLYFILL: status = "Частично исполнена"; break;
-            case EXECUTION_REPORT_STATUS_UNSPECIFIED: status = "none"; break;
-        }
-        dto.setStatus(status);
-        String direction = null;
-        switch (orderState.getDirection()) {
-            case ORDER_DIRECTION_BUY: direction = "Покупка"; break;
-            case ORDER_DIRECTION_SELL: direction = "Продажа"; break;
-            case ORDER_DIRECTION_UNSPECIFIED: direction = "Значение не указано"; break;
-        }
-        dto.setDirection(direction);
+        dto.setStatus(getStatus(orderState.getExecutionReportStatus()));
+        dto.setDirection(getDirection(orderState.getDirection()));
         dto.setFigi(orderState.getFigi());
         dto.setInitialPrice(moneyValueToBigDecimal(orderState.getInitialSecurityPrice()));
         dto.setCurrency(orderState.getCurrency());
         dto.setTicker(sharesService.findTickerByFigi(orderState.getFigi()));
         return dto;
+    }
+
+    public OrderStateDto toDto(PostOrderResponse order){
+        OrderStateDto dto = new OrderStateDto();
+        dto.setOrderId(order.getOrderId());
+        dto.setStatus(getStatus(order.getExecutionReportStatus()));
+        dto.setDirection(getDirection(order.getDirection()));
+        dto.setFigi(order.getFigi());
+        dto.setInitialPrice(moneyValueToBigDecimal(order.getInitialSecurityPrice()));
+        dto.setCurrency(order.getInitialSecurityPrice().getCurrency());
+        dto.setTicker(sharesService.findTickerByFigi(order.getFigi()));
+        return dto;
+    }
+
+    private String getStatus(OrderExecutionReportStatus status){
+        switch (status) {
+            case EXECUTION_REPORT_STATUS_NEW: return  "Новая";
+            case EXECUTION_REPORT_STATUS_FILL: return  "Исполнена";
+            case EXECUTION_REPORT_STATUS_REJECTED: return  "Отклонена";
+            case EXECUTION_REPORT_STATUS_CANCELLED: return  "Отменена пользователем";
+            case EXECUTION_REPORT_STATUS_PARTIALLYFILL: return  "Частично исполнена";
+            case EXECUTION_REPORT_STATUS_UNSPECIFIED: return "none";
+            default: return "";
+        }
+    }
+
+    private String getDirection(OrderDirection direction){
+        switch (direction) {
+            case ORDER_DIRECTION_BUY: return "Покупка";
+            case ORDER_DIRECTION_SELL: return "Продажа";
+            case ORDER_DIRECTION_UNSPECIFIED: return "Значение не указано";
+            default: return "";
+        }
     }
 }

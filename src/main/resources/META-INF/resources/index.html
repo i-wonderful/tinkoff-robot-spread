@@ -5,7 +5,10 @@
     <title>Tinkoff api robot. Java.</title>
 
     <link rel="stylesheet" href="https://unpkg.com/primeflex@3.1.2/primeflex.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/wingcss/0.1.8/wing.min.css"/>
+<!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/wingcss/0.1.8/wing.min.css"/>-->
+<!--    <link rel="stylesheet" href="https://unpkg.com/wingcss"/>-->
+<!--    <link rel="stylesheet" href="https://unpkg.com/purecss@2.1.0/build/pure-min.css" integrity="sha384-yHIFVG6ClnONEA5yB5DJXfW2/KC173DIQrYoZMEtBvGzmf0PKiGyNEqe9N6BNDBH" crossorigin="anonymous">-->
+    <link rel="stylesheet" href="https://unpkg.com/chota@0.8.0/dist/chota.min.css">
 
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios@0.27.2/dist/axios.min.js"></script>
@@ -25,6 +28,23 @@
         }
         .log-orders-panel {
             height: 100px;
+        }
+
+        .table {
+            width: 100%;
+            margin-bottom: 20px;
+            border: 1px solid #dddddd;
+            border-collapse: collapse;
+        }
+        .table th {
+            font-weight: bold;
+            padding: 5px;
+            background: #efefef;
+            border: 1px solid #dddddd;
+        }
+        .table td {
+            border: 1px solid #dddddd;
+            padding: 5px;
         }
     </style>
 </head>

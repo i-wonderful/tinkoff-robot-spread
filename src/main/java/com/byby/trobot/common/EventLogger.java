@@ -1,11 +1,16 @@
 package com.byby.trobot.common;
 
+import com.byby.trobot.dto.OrderStateDto;
+import com.byby.trobot.dto.codec.OrderStateDtoCodec;
+import com.byby.trobot.dto.mapper.OrderMapper;
 import com.byby.trobot.service.impl.SharesService;
-import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static ru.tinkoff.piapi.contract.v1.OrderDirection.*;
+import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -22,9 +27,11 @@ public class EventLogger {
     private static final String TEMPLATE_ADD_ORDER_BUY = "[%s] Выставлена лимитная заявка на покупку по цене %f, orderId=%s";
     private static final String TEMPLATE_ADD_ORDER_SELL = "[%s] Выставлена лимитная заявка на продажу по цене %f, orderId=%s";
 
-
     @Inject
     SharesService sharesService;
+
+    @Inject
+    OrderMapper orderMapper;
 
     @Inject
     EventBus bus;
@@ -51,27 +58,27 @@ public class EventLogger {
         return Uni.createFrom().voidItem();
     }
 
-    public Uni logOrderBuyAdd(String orderId, double price, String figi) {
-        String ticker = sharesService.findTickerByFigi(figi);
-        String messageLog = String.format(TEMPLATE_ADD_ORDER_BUY, ticker, price, orderId);
-        String messageLogOrder = String.format("[%s] Add BUY orderId=%s, price=%f", ticker, orderId, price);
-        bus.publish(LOG, messageLog);
-        bus.publish(LOG_ORDER, messageLogOrder);
-        log.info(messageLog);
+    public Uni logOrder(OrderStateDto dto) {
+        bus.publish(LOG_ORDER, dto, new DeliveryOptions().setCodecName(OrderStateDtoCodec.NAME));
         return Uni.createFrom().voidItem();
     }
 
-    public Uni logOrderSellAdd(String orderId, double price, String figi) {
-        String ticker = sharesService.findTickerByFigi(figi);
-        String messageLog = String.format(TEMPLATE_ADD_ORDER_SELL, ticker, price, orderId);
-        String messageLogOrder = String.format("[%s] Add SELL orderId=%s, price=%f", ticker, orderId, price);
+    public Uni logPostOrder(PostOrderResponse response) {
+        OrderStateDto dto = orderMapper.toDto(response);
+        logOrder(dto);
+
+        String template = "%s %f %s";
+        if(response.getDirection().equals(ORDER_DIRECTION_BUY)) {
+            template = TEMPLATE_ADD_ORDER_BUY;
+        } else if (response.getDirection().equals(ORDER_DIRECTION_SELL)) {
+            template = TEMPLATE_ADD_ORDER_SELL;
+        }
+        String messageLog = String.format(template, dto.getTicker(), dto.getInitialPrice(), dto.getOrderId());
         bus.publish(LOG, messageLog);
-        bus.publish(LOG_ORDER, messageLogOrder);
-        log.info(messageLog);
         return Uni.createFrom().voidItem();
     }
 
-    public Uni logOrderCancel(String orderId, String figi){
+    public Uni logOrderCancel(String orderId, String figi) {
         String template = "[%s] Отменена заявка. orderId=%s";
         String ticker = sharesService.findTickerByFigi(figi);
         String message = String.format(template, ticker, orderId);

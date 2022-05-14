@@ -47,7 +47,7 @@ export default {
                 .then(response => {
                     var orders = response.data;
                     for (const order of orders) {
-                        this.logOrders.push(order.ticker + " " + order.direction + order.initialPrice + " " + order.currency + " " + order.orderId + "  ");
+                        this.logOrders.push(order);
                     }
                 })
         },
@@ -104,10 +104,24 @@ export default {
         </div>
         
         <h5>Заявки</h5>
-        <div class="log-panel log-orders-panel">
-            <div v-for="(log, index) in logOrders" >
-                {{logOrders[index]}}
-            </div>
+        <div>
+            <table class="table">
+                <tr>
+                    <th>Тикер</th>
+                    <th>Статус</th>
+                    <th>Тип</th>
+                    <th>Цена</th>
+                    <th>orderId</th>
+                </tr>   
+                <tr v-for="(order, index) in logOrders" >
+                    <td>{{order.ticker}}</td>
+                    <td>{{order.status}}</td>
+                    <td>{{order.direction}}</td>
+                    <td>{{order.initialPrice}} {{order.currency}}</td>
+                    <td>{{order.orderId}}</td>
+                </tr>
+            </table>
+            
         </div>
         
         <h5>Основной лог</h5>

@@ -231,7 +231,7 @@ public class SpreadStrategy implements Strategy {
      */
     private void postBuyLimitOrder(String figi, BigDecimal price) {
         PostOrderResponse response = executor.get().postBuyLimitOrder(figi, price);
-        eventLogger.logOrderBuyAdd(response.getOrderId(), price.doubleValue(), figi);
+        eventLogger.logPostOrder(response);
     }
 
     /**
@@ -239,7 +239,7 @@ public class SpreadStrategy implements Strategy {
      */
     private void postSellLimitOrder(String figi, BigDecimal price) {
         PostOrderResponse response = executor.get().postSellLimitOrder(figi, price);
-        eventLogger.logOrderSellAdd(response.getOrderId(), price.doubleValue(), figi);
+        eventLogger.logPostOrder(response);
     }
 
     /**
