@@ -6,11 +6,16 @@ import com.byby.trobot.dto.OrderStateDto;
 import com.byby.trobot.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.*;
+import com.byby.trobot.strategy.impl.SpreadFindFigiService;
 import com.byby.trobot.strategy.impl.SpreadStrategy;
+import com.byby.trobot.strategy.impl.StrategyCacheManager;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.eventbus.EventBus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.GetOrderBookResponse;
 import ru.tinkoff.piapi.core.utils.MapperUtils;
 
@@ -20,15 +25,19 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.QueryParam;
 import java.math.BigDecimal;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * For testing
  */
 @Path("/vertx")
 public class VertxController {
-
+    private static final Logger log = LoggerFactory.getLogger(VertxController.class);
+    @Inject
+    Vertx vertx;
     @Inject
     EventBus bus;
 
@@ -40,12 +49,17 @@ public class VertxController {
     ApplicationProperties properties;
     @Inject
     SpreadService spreadService;
+
     @Inject
     OrderbookService orderbookService;
     @Inject
     StrategyManagerImpl strategyManager;
     @Inject
+    SpreadFindFigiService findFigiService;
+    @Inject
     SpreadStrategy strategy;
+    @Inject
+    StrategyCacheManager cacheManager;
     @Inject
     Instance<Executor> executor;
 
@@ -97,9 +111,33 @@ public class VertxController {
 
     @GET
     @Path("/figi")
-    public List<String> getFigi() {
-        return strategyManager.findFigi();
+    public void getFigi() {
+         findFigiService.findFigi();
     }
+
+    @GET
+    @Path("/cache-get")
+    public List<String> getFromCache(){
+        log.info(">>> GetFromCache ");
+        return cacheManager.getFigiSync();
+    }
+
+
+    @GET
+    @Path("/cache-add")
+    public Uni addToCache(){
+//        cacheManager.invalidateAndAddFigi(List.of("One " + new Random().nextInt()));
+       Uni uni1 = cacheManager.addFigi("First");
+       Uni uni2 = cacheManager.addFigi(List.of("1", "2"));
+       Uni uni3 = cacheManager.addFigi(List.of("3", "4"));
+        return Uni.combine().all().unis(uni1, uni2, uni3).discardItems();
+    }
+
+//    @GET
+//    @Path("/spread-find-figi-service-test")
+//    public Uni spreadFindFigiServiceTest(){
+//        return findFigiService.findFigi(null);
+//    }
 
     @GET
     // figi='BBG000BXQ7R1', ticker='ZNH'
@@ -122,4 +160,17 @@ public class VertxController {
         dto.setOrderId(UUID.randomUUID().toString());
         bus.send(GlobalBusAddress.LOG_ORDER, dto, new DeliveryOptions().setCodecName(OrderStateDtoCodec.NAME));
     }
+
+    @GET
+    @Path("/timer-test")
+    public void vertxTimerTest(){
+        log.info(">>> Timer Test " + LocalTime.now());
+
+        long millis = TimeUnit.MINUTES.toMillis(1);
+        vertx.setTimer(millis, aLong -> {
+            log.info(">>> Timer " + LocalTime.now() + ' ' + millis);
+        });
+
+    }
+
 }

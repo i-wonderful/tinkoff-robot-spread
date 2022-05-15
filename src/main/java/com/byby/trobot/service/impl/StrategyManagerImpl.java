@@ -4,7 +4,9 @@ import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
+import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.Strategy;
+import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
@@ -30,7 +32,8 @@ public class StrategyManagerImpl implements StrategyManager {
 
     @Inject
     Strategy strategy;
-
+    @Inject
+    FindFigiService findFigiService;
     @Inject
     EventBus bus;
 
@@ -61,8 +64,8 @@ public class StrategyManagerImpl implements StrategyManager {
             return;
         }
         eventLogger.log("Поехали!");
-        List<String> figi = findFigi();
-        strategy.start(figi);
+        Uni<List<String>> figi = findFigi();
+        figi.invoke(f -> strategy.start(f));
         this.isRun = true;
     }
 
@@ -72,7 +75,7 @@ public class StrategyManagerImpl implements StrategyManager {
             eventLogger.log("Не запущен");
             return;
         }
-        strategy.stop();
+        strategy.stop().subscribeAsCompletionStage().join();
         this.isRun = false;
     }
 
@@ -94,10 +97,10 @@ public class StrategyManagerImpl implements StrategyManager {
      *
      * @return список figi
      */
-    public List<String> findFigi() {
+    public Uni<List<String>> findFigi() {
         List<String> figi = figiFromProperties();
         if (figi.isEmpty()) {
-            figi = strategy.findFigi();
+            return findFigiService.findFigi();
         }
         if (figi == null || figi.isEmpty()) {
             eventLogger.log("Не найдены подходящие акции. Измените настройки.");
@@ -105,7 +108,7 @@ public class StrategyManagerImpl implements StrategyManager {
             eventLogger.log("Отслеживаем акции", figi);
         }
 
-        return figi;
+        return Uni.createFrom().item(figi);
     }
 
     private List<String> figiFromProperties() {

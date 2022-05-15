@@ -3,13 +3,14 @@ package com.byby.trobot.strategy.impl;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
-import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.OrderbookService;
 import com.byby.trobot.service.impl.SpreadService;
 import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.strategy.Strategy;
 import com.byby.trobot.strategy.impl.model.OrderPair;
 import com.byby.trobot.strategy.impl.model.Spread;
+import io.smallrye.mutiny.Uni;
+import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,8 +21,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,11 +28,13 @@ import static com.byby.trobot.common.GlobalBusAddress.*;
 
 /**
  * Стратегия опеределяет что и когда купить и продать.
- * А сами покупки происходят в strategyManager.
  */
 @ApplicationScoped
 public class SpreadStrategy implements Strategy {
     private static final Logger log = LoggerFactory.getLogger(SpreadStrategy.class);
+
+    @Inject
+    Vertx vertx;
 
     @Inject
     EventBus bus;
@@ -47,56 +48,14 @@ public class SpreadStrategy implements Strategy {
 
     @Inject
     OrderbookService orderbookService;
-
-    @Inject
-    ExchangeService exchangeService;
-
     @Inject
     SpreadService spreadService;
-
     @Inject
     Instance<Executor> executor;
-
     @Inject
     EventLogger eventLogger;
-
-
-    List<String> figi;
-
-    /**
-     * Ищем кандидатов на покупку.
-     * <p>
-     * Берем спреды среди всех акций
-     * и оставляем те где спред больше параметра robot.strategy.spread.percent.
-     *
-     * @return
-     */
-    @Override
-    public List<String> findFigi() {
-        eventLogger.log("Ищем акции...");
-
-        List<String> exchanges = exchangeService.getExchangesOpenNow();
-        List<Share> shares = sharesService.getShares(exchanges);
-        eventLogger.log(String.format("Получено %d акций с бирж %s", shares.size(), exchanges));
-
-        shares = shares.subList(0, 200);// todo
-        eventLogger.log("Отбираем подходящие акции среди первых " + shares.size());
-
-        List<Spread> spreadsAll = spreadService.getSpreads(shares)
-                .stream()
-                .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
-                .collect(Collectors.toList());
-        log.info(">>> All spreads: " + spreadsAll);
-        List<Spread> spreads = spreadsAll
-                .stream()
-                .filter(s -> properties.getRobotSpreadPercent() <= s.getPercent())
-                .collect(Collectors.toList());
-        log.info(">>> " + spreads);
-        return spreads.stream()
-                .map(Spread::getFigi)
-                .limit(properties.getSharesMaxCount())
-                .collect(Collectors.toList());
-    }
+    @Inject
+    StrategyCacheManager cacheManager;
 
     @Override
     public void start(List<String> figis) {
@@ -104,7 +63,6 @@ public class SpreadStrategy implements Strategy {
             eventLogger.log("!!! Список акций в стратегии не указан. Поменяйте настройки.");
             return;
         }
-        this.figi = figis;
 
         // подписываемся на сделки
         if (!properties.isSandboxMode()) {
@@ -115,24 +73,31 @@ public class SpreadStrategy implements Strategy {
         }
 
         // выставляем начальные заявки
-        this.figi.forEach(f -> {
-            Spread spread = spreadService.getSpread(f);
+
+        // todo проверять наличие
+        figis.forEach(f -> {
+            Spread spread = spreadService.getSpreadSync(f);
             if (isBigSpread(spread.getPercent())) {
                 postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
                 postSellLimitOrder(spread.getFigi(), spread.getNextAskPrice());
             }
         });
 
+        //
+//        orderbookService.unsucscribeOrderbook(figi);
+
         // подписываемся на стакан
-        orderbookService.subscribeOrderBook(this.figi, (orderBook) -> {
+        orderbookService.subscribeOrderBook(figis, (orderBook) -> {
             processOrderbook(orderBook);
         });
     }
 
     @Override
-    public void stop() {
-        orderbookService.unsucscribeOrderbook(this.figi);
-        this.figi = Collections.emptyList();
+    public Uni<Void> stop() {
+        return cacheManager.getFigi()
+                .invoke(orderbookService::unsucscribeOrderbook)
+                .onItem()
+                .transformToUni(f -> cacheManager.clear());
     }
 
     // todo это метод для тестирования
@@ -158,6 +123,14 @@ public class SpreadStrategy implements Strategy {
         processOrderbook(spread, bidOrderbook, askOrderbook);
     }
 
+    /**
+     * Обработать новые данные по сткану:
+     * выставить или снять заявки если необходимо.
+     *
+     * @param spread       спред
+     * @param bidOrderbook первая заявка на покупку
+     * @param askOrderbook первая заявка на продажу
+     */
     public void processOrderbook(Spread spread, Order bidOrderbook, Order askOrderbook) {
         String figi = spread.getFigi();
         eventLogger.log(String.format("Новые данные по стакану, spread=%f, %f%%", spread.getDiff().doubleValue(), spread.getPercent()), figi);
@@ -175,8 +148,6 @@ public class SpreadStrategy implements Strategy {
             // проверяем есть ли заявки на покупку и выставляем оптимальную
             eventLogger.log("Спред подходящий. Проверяем наличие заявок buy/sell.", figi);
             processBuyOrder(myOrderPair.getBuy(), spread, bidOrderbook);
-
-            // todo заявка на продажу
             processSellOrder(myOrderPair.getSell(), spread, askOrderbook);
         }
     }
@@ -191,7 +162,8 @@ public class SpreadStrategy implements Strategy {
                 eventLogger.log("Оптимальная заявка на продажу уже есть.", figi);
             } else {
                 // отменяем предыдущую
-                bus.send(CANCEL_ORDER, myAsk.getOrderId());
+                //bus.send(CANCEL_ORDER, myAsk.getOrderId());
+                executor.get().cancelOrder(myAsk.getOrderId());
                 eventLogger.logOrderCancel(myAsk.getOrderId(), figi);
                 // Выставляем новую
                 postSellLimitOrder(figi, spread.getNextAskPrice());
@@ -209,7 +181,8 @@ public class SpreadStrategy implements Strategy {
                 eventLogger.log("Оптимальная заявка на покупку уже есть. price=" + MapperUtils.moneyValueToBigDecimal(myBid.getInitialSecurityPrice()), figi);
             } else {
                 // отменяем предыдущую
-                bus.send(CANCEL_ORDER, myBid.getOrderId());
+                //bus.send(CANCEL_ORDER, myBid.getOrderId());
+                executor.get().cancelOrder(CANCEL_ORDER);
                 eventLogger.logOrderCancel(myBid.getOrderId(), figi);
                 // Выставляем новую
                 postBuyLimitOrder(figi, spread.getNextBidPrice());

@@ -2,6 +2,8 @@ package com.byby.trobot.service.impl;
 
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.quarkus.cache.CacheResult;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
@@ -34,7 +36,7 @@ public class SpreadService {
     public Spread calcSpread(OrderBook orderBook) {
         String figi = orderBook.getFigi();
         if (orderBook.getAsksCount() < 1 || orderBook.getBidsCount() < 1) {
-            log.info(">>> Empty Order book, figi {} ", figi);
+            //log.info(">>> Empty Order book, figi {} ", figi);
             return new Spread(figi, BigDecimal.ZERO, 0.0);
         }
         Order ask = orderBook.getAsks(0);
@@ -45,7 +47,7 @@ public class SpreadService {
     public Spread calcSpread(GetOrderBookResponse orderBook) {
         String figi = orderBook.getFigi();
         if (orderBook.getAsksCount() < 1 || orderBook.getBidsCount() < 1) {
-            log.info(">>> Empty Order book, figi {} ", figi);
+            //log.info(">>> Empty Order book, figi {} ", figi);
             return new Spread(figi);
         }
         Order ask = orderBook.getAsks(0);
@@ -53,21 +55,33 @@ public class SpreadService {
         return calcSpread(ask, bid, figi);
     }
 
-    public Spread getSpread(String figi) {
-        var orderBook = api.getMarketDataService().getOrderBookSync(figi, 1);
-        return calcSpread(orderBook);
+    public Uni<Spread> getSpread(String figi) {
+       return Uni.createFrom().completionStage(api.getMarketDataService().getOrderBook(figi, 1))
+               .onItem()
+               .transform(orderBookResponse -> calcSpread(orderBookResponse))
+               ;
     }
 
-    public List<Spread> getSpreads(List<Share> share) {
-        return share.stream()
+    public Spread getSpreadSync(String figi) {
+        return getSpread(figi).await().indefinitely();
+    }
+
+    public Multi<Spread> getSpreads(List<Share> share) {
+        List<Uni<Spread>> spreads = share.stream()
                 .map(Share::getFigi)
                 .map(this::getSpread)
                 .collect(Collectors.toList());
+        //return Uni.combine().all().unis(spreads);
+
+        return Multi.createFrom().iterable(spreads).onItem()
+                .transformToMulti(Uni::toMulti)
+                .merge();
+       // return Multi.createFrom().iterable(spreads) ;
     }
 
     public List<Spread> getSpread(List<String> figi) {
         return figi.stream()
-                .map(f -> getSpread(f))
+                .map(f -> getSpreadSync(f))
                 .filter(spread -> !BigDecimal.ZERO.equals(spread.getDiff())) // todo убрать?
                 .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
                 .collect(Collectors.toList());
@@ -113,6 +127,10 @@ public class SpreadService {
     }
 
     public Quotation calcNextBidPrice(GetOrderBookResponse orderBookResponse) {
+        if (orderBookResponse.getBidsCount() < 1) {
+            log.info(">>> Bids count is 0");
+            return Quotation.newBuilder().build();
+        }
         String figi = orderBookResponse.getFigi();
         Order bid = orderBookResponse.getBids(0);
         return calcNextBidPrice(figi, bid);
@@ -146,7 +164,7 @@ public class SpreadService {
      * Цена на один шаг ниже последней заявки на продажу из стакана.
      *
      * @param figi
-     * @param ask заявка продажи из стакана
+     * @param ask  заявка продажи из стакана
      * @return
      */
     public Quotation calcNextAskPrice(String figi, Order ask) {
