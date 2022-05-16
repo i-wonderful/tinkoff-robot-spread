@@ -2,11 +2,13 @@ package com.byby.trobot.dto.mapper;
 
 import com.byby.trobot.dto.OrderStateDto;
 import com.byby.trobot.service.impl.SharesService;
+import io.smallrye.mutiny.Uni;
 import ru.tinkoff.piapi.contract.v1.OrderDirection;
 import ru.tinkoff.piapi.contract.v1.OrderExecutionReportStatus;
 import ru.tinkoff.piapi.contract.v1.OrderState;
 import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import java.util.List;
@@ -14,30 +16,42 @@ import java.util.stream.Collectors;
 
 import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 
-@RequestScoped
+@ApplicationScoped
 public class OrderMapper {
     @Inject
     SharesService sharesService;
 
-    public List<OrderStateDto> toDto(List<OrderState> orderStates) {
-        return orderStates.stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+    public Uni<List<OrderStateDto>> toDto(Uni<List<OrderState>> orderStates) {
+        return orderStates
+                .onItem()
+                .transformToUni(os -> Uni.join().all(
+                                os.stream()
+                                        .map(this::toDto)
+                                        .collect(Collectors.toList()))
+                        .andCollectFailures());
+//       Uni.combine().all().unis(orderStates.stream()
+//                .map(this::toDto)
+//                .collect(Collectors.toList())).;
     }
 
-    public OrderStateDto toDto(OrderState orderState) {
-        OrderStateDto dto = new OrderStateDto();
-        dto.setOrderId(orderState.getOrderId());
-        dto.setStatus(getStatus(orderState.getExecutionReportStatus()));
-        dto.setDirection(getDirection(orderState.getDirection()));
-        dto.setFigi(orderState.getFigi());
-        dto.setInitialPrice(moneyValueToBigDecimal(orderState.getInitialSecurityPrice()));
-        dto.setCurrency(orderState.getCurrency());
-        dto.setTicker(sharesService.findTickerByFigi(orderState.getFigi()));
-        return dto;
+    public Uni<OrderStateDto> toDto(OrderState orderState) {
+        return sharesService.findTickerByFigi(orderState.getFigi())
+                .onItem()
+                .transform(ticker -> {
+                    OrderStateDto dto = new OrderStateDto();
+                    dto.setOrderId(orderState.getOrderId());
+                    dto.setStatus(getStatus(orderState.getExecutionReportStatus()));
+                    dto.setDirection(getDirection(orderState.getDirection()));
+                    dto.setFigi(orderState.getFigi());
+                    dto.setInitialPrice(moneyValueToBigDecimal(orderState.getInitialSecurityPrice()));
+                    dto.setCurrency(orderState.getCurrency());
+                    dto.setTicker(ticker);
+                    return dto;
+                });
+
     }
 
-    public OrderStateDto toDto(PostOrderResponse order){
+    public OrderStateDto toDto(PostOrderResponse order) {
         OrderStateDto dto = new OrderStateDto();
         dto.setOrderId(order.getOrderId());
         dto.setStatus(getStatus(order.getExecutionReportStatus()));
@@ -45,28 +59,39 @@ public class OrderMapper {
         dto.setFigi(order.getFigi());
         dto.setInitialPrice(moneyValueToBigDecimal(order.getInitialSecurityPrice()));
         dto.setCurrency(order.getInitialSecurityPrice().getCurrency());
-        dto.setTicker(sharesService.findTickerByFigi(order.getFigi()));
+//        dto.setTicker(sharesService.findTickerByFigi(order.getFigi()));
         return dto;
     }
 
-    private String getStatus(OrderExecutionReportStatus status){
+    private String getStatus(OrderExecutionReportStatus status) {
         switch (status) {
-            case EXECUTION_REPORT_STATUS_NEW: return  "Новая";
-            case EXECUTION_REPORT_STATUS_FILL: return  "Исполнена";
-            case EXECUTION_REPORT_STATUS_REJECTED: return  "Отклонена";
-            case EXECUTION_REPORT_STATUS_CANCELLED: return  "Отменена пользователем";
-            case EXECUTION_REPORT_STATUS_PARTIALLYFILL: return  "Частично исполнена";
-            case EXECUTION_REPORT_STATUS_UNSPECIFIED: return "none";
-            default: return "";
+            case EXECUTION_REPORT_STATUS_NEW:
+                return "Новая";
+            case EXECUTION_REPORT_STATUS_FILL:
+                return "Исполнена";
+            case EXECUTION_REPORT_STATUS_REJECTED:
+                return "Отклонена";
+            case EXECUTION_REPORT_STATUS_CANCELLED:
+                return "Отменена пользователем";
+            case EXECUTION_REPORT_STATUS_PARTIALLYFILL:
+                return "Частично исполнена";
+            case EXECUTION_REPORT_STATUS_UNSPECIFIED:
+                return "none";
+            default:
+                return "";
         }
     }
 
-    private String getDirection(OrderDirection direction){
+    private String getDirection(OrderDirection direction) {
         switch (direction) {
-            case ORDER_DIRECTION_BUY: return "Покупка";
-            case ORDER_DIRECTION_SELL: return "Продажа";
-            case ORDER_DIRECTION_UNSPECIFIED: return "Значение не указано";
-            default: return "";
+            case ORDER_DIRECTION_BUY:
+                return "Покупка";
+            case ORDER_DIRECTION_SELL:
+                return "Продажа";
+            case ORDER_DIRECTION_UNSPECIFIED:
+                return "Значение не указано";
+            default:
+                return "";
         }
     }
 }

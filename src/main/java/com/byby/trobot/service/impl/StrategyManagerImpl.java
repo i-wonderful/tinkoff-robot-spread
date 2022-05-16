@@ -1,15 +1,16 @@
 package com.byby.trobot.service.impl;
 
 import com.byby.trobot.common.EventLogger;
+import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.Strategy;
+import com.byby.trobot.strategy.impl.StrategyCacheManager;
+import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.eclipse.microprofile.context.ThreadContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.Share;
@@ -17,10 +18,7 @@ import ru.tinkoff.piapi.contract.v1.Share;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -41,13 +39,13 @@ public class StrategyManagerImpl implements StrategyManager {
     Instance<Executor> executor;
 
     // todo как этим пользоваться
-    @Inject
-    ThreadContext threadContext;
-    @Inject
-    ManagedExecutor managedExecutor;
+//    @Inject
+//    ThreadContext threadContext;
+//    @Inject
+//    ManagedExecutor managedExecutor;
 
-    // todo сделать нормальный кеш
-    Map<String, List<String>> cacheOrders = new HashMap<>();
+    @Inject
+    StrategyCacheManager cacheManager;
 
     @Inject
     ApplicationProperties properties;
@@ -55,18 +53,37 @@ public class StrategyManagerImpl implements StrategyManager {
     @Inject
     SharesService sharesService;
 
-    boolean isRun = false;
+    private boolean isRun = false;
 
     @Override
     public void start() {
-        if (isRun) {
+        if (this.isRun) {
             eventLogger.log("Уже запущен");
             return;
         }
         eventLogger.log("Поехали!");
-        Uni<List<String>> figi = findFigi();
-        figi.invoke(f -> strategy.start(f));
+        findFigi();
         this.isRun = true;
+    }
+
+    /**
+     * Найдены новые подходящие акции.
+     * Запускаем стратегию.
+     */
+    @ConsumeEvent(value = GlobalBusAddress.NEW_FIGI, blocking = true)
+    public void newFigiFoundAndStartStrategy(String figiArray) {
+        List<String> figi = Arrays.asList(figiArray.split(","));
+        log.info(">>> New Figi found: " + figi);
+
+        cacheManager.getFigi()
+                .invoke((oldFigi) -> strategy.stopListening(oldFigi))
+                .onItem()
+                //.call((oldFigi) -> strategy.stopListening(oldFigi))
+                .transformToUni((t) -> cacheManager.addFigi(figi))
+                .subscribe()
+                .with(figiAll -> {
+                    strategy.start(figiAll);
+                });
     }
 
     @Override
@@ -123,6 +140,8 @@ public class StrategyManagerImpl implements StrategyManager {
             return Collections.emptyList();
         }
     }
+
+
 
 //    @ConsumeEvent(value = GlobalBusAddress.POST_BUY_ORDER, blocking = true)
 //    // todo сделать полностью неблокирующий вызов

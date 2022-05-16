@@ -31,12 +31,12 @@ public interface Executor {
     /**
      * Выставить лимитную заявку на покупку.
      */
-    PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price);
+    Uni<PostOrderResponse> postBuyLimitOrder(String figi, BigDecimal price);
 
     /**
      * Выставить лимитную заявку на продажу.
      */
-    PostOrderResponse postSellLimitOrder(String figi, BigDecimal price);
+    Uni<PostOrderResponse> postSellLimitOrder(String figi, BigDecimal price);
 
     /**
      *

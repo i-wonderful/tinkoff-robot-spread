@@ -72,7 +72,7 @@ public class PortfolioMapper {
 
         PortfolioPositionDto dto = new PortfolioPositionDto();
         dto.setFigi(value.getFigi());
-        dto.setTicker(sharesService.findTickerByFigi(value.getFigi()));
+        dto.setTicker(sharesService.findTickerByFigiSync(value.getFigi()));
         dto.setName(sharesService.findNameByFigi(value.getFigi()));
         dto.setAveragePrice(moneyValueToBigDecimal(value.getAveragePositionPrice()));
         dto.setCurrency(value.getAveragePositionPrice().getCurrency());

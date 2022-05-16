@@ -58,7 +58,15 @@ public class SpreadStrategy implements Strategy {
     StrategyCacheManager cacheManager;
 
     @Override
+    public void stopListening(List<String> figiUnsucscribe) {
+        // отписываемся от старых
+        log.info(">>> StopListening. " + figiUnsucscribe);
+        orderbookService.unsucscribeOrderbook(figiUnsucscribe);
+    }
+
+    @Override
     public void start(List<String> figis) {
+        log.info(">>> Start strategy. " + figis);
         if (figis == null || figis.isEmpty()) {
             eventLogger.log("!!! Список акций в стратегии не указан. Поменяйте настройки.");
             return;
@@ -76,17 +84,18 @@ public class SpreadStrategy implements Strategy {
 
         // todo проверять наличие
         figis.forEach(f -> {
-            Spread spread = spreadService.getSpreadSync(f);
-            if (isBigSpread(spread.getPercent())) {
-                postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
-                postSellLimitOrder(spread.getFigi(), spread.getNextAskPrice());
-            }
+            spreadService.getSpread(f)
+                    .subscribe()
+                    .with(spread -> {
+                        if (isBigSpread(spread.getPercent())) {
+                            postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
+                            postSellLimitOrder(spread.getFigi(), spread.getNextAskPrice());
+                        }
+                    });
         });
 
-        //
-//        orderbookService.unsucscribeOrderbook(figi);
 
-        // подписываемся на стакан
+        // подписываемся на новые
         orderbookService.subscribeOrderBook(figis, (orderBook) -> {
             processOrderbook(orderBook);
         });
@@ -102,25 +111,25 @@ public class SpreadStrategy implements Strategy {
 
     // todo это метод для тестирования
     public void processOrderbookTEST(GetOrderBookResponse orderBook) {
-        Spread spread = spreadService.calcSpread(orderBook);
+        Uni<Spread> spread = spreadService.calcSpread(orderBook);
         Order bidOrderbook = orderBook.getBidsCount() > 0 ?
                 orderBook.getBids(0) :
                 null;
         Order askOrderbook = orderBook.getAsksCount() > 0 ?
                 orderBook.getAsks(0) :
                 null;
-        processOrderbook(spread, bidOrderbook, askOrderbook);
+        processOrderbook(spread.await().indefinitely(), bidOrderbook, askOrderbook);
     }
 
     private void processOrderbook(OrderBook orderBook) {
-        Spread spread = spreadService.calcSpread(orderBook);
+        Uni<Spread> spread = spreadService.calcSpread(orderBook);
         Order bidOrderbook = orderBook.getBidsCount() > 0 ?
                 orderBook.getBids(0) :
                 null;
         Order askOrderbook = orderBook.getAsksCount() > 0 ?
                 orderBook.getAsks(0) :
                 null;
-        processOrderbook(spread, bidOrderbook, askOrderbook);
+        processOrderbook(spread.await().indefinitely(), bidOrderbook, askOrderbook);
     }
 
     /**
@@ -182,7 +191,7 @@ public class SpreadStrategy implements Strategy {
             } else {
                 // отменяем предыдущую
                 //bus.send(CANCEL_ORDER, myBid.getOrderId());
-                executor.get().cancelOrder(CANCEL_ORDER);
+                executor.get().cancelOrder(myBid.getOrderId());
                 eventLogger.logOrderCancel(myBid.getOrderId(), figi);
                 // Выставляем новую
                 postBuyLimitOrder(figi, spread.getNextBidPrice());
@@ -203,16 +212,18 @@ public class SpreadStrategy implements Strategy {
      * Выставить лимитную заявку на покупку.
      */
     private void postBuyLimitOrder(String figi, BigDecimal price) {
-        PostOrderResponse response = executor.get().postBuyLimitOrder(figi, price);
-        eventLogger.logPostOrder(response);
+        executor.get().postBuyLimitOrder(figi, price)
+                .subscribe()
+                .with(response -> eventLogger.logPostOrder(response));
     }
 
     /**
      * Выставить лимитную заявку на продажу
      */
     private void postSellLimitOrder(String figi, BigDecimal price) {
-        PostOrderResponse response = executor.get().postSellLimitOrder(figi, price);
-        eventLogger.logPostOrder(response);
+        executor.get().postSellLimitOrder(figi, price)
+                .subscribe()
+                .with(response -> eventLogger.logPostOrder(response));
     }
 
     /**
@@ -220,6 +231,7 @@ public class SpreadStrategy implements Strategy {
      */
     private void cancelOrders(OrderPair orderPair) {
         if (orderPair.getBuy() != null) {
+            // todo
             bus.send(CANCEL_ORDER, orderPair.getBuy().getOrderId());
         }
         if (orderPair.getSell() != null) {

@@ -1,9 +1,6 @@
 package com.byby.trobot.controller;
 
-import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.ApplicationProperties;
-import com.byby.trobot.dto.OrderStateDto;
-import com.byby.trobot.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.*;
 import com.byby.trobot.strategy.impl.SpreadFindFigiService;
@@ -21,19 +18,18 @@ import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.QueryParam;
-import java.math.BigDecimal;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * For testing
  */
 @Path("/vertx")
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class VertxController {
     private static final Logger log = LoggerFactory.getLogger(VertxController.class);
     @Inject
@@ -63,13 +59,13 @@ public class VertxController {
     @Inject
     Instance<Executor> executor;
 
-    @GET
-    @Path("/hello")
-    public Uni<String> hello(@QueryParam("name") String name) {
-        return bus.<String>request("greetings", name)
-                .onItem()
-                .transform(response -> response.body());
-    }
+//    @GET
+//    @Path("/hello")
+//    public Uni<String> hello(@QueryParam("name") String name) {
+//        return bus.<String>request("greetings", name)
+//                .onItem()
+//                .transform(response -> response.body());
+//    }
 
     //BBG004S68BR5
     @GET
@@ -81,7 +77,7 @@ public class VertxController {
 
     @GET
     @Path("/ticker")
-    public String getTickerByFigi() {
+    public Uni<String> getTickerByFigi() {
         sharesService.findByTicker(List.of("NMTP"));
         return sharesService.findTickerByFigi("BBG004S68BR5");
     }
@@ -94,25 +90,26 @@ public class VertxController {
 
     @GET
     @Path("/calcprice")
-    public double calcMinBuyPrice() {
+    public Uni<Double> calcMinBuyPrice() {
         GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG00W9LF2G5");
-        var price = spreadService.calcNextBidPrice(orderbook);
-        return MapperUtils.quotationToBigDecimal(price).doubleValue();
+        return spreadService.calcNextBidPrice(orderbook)
+                .onItem()
+                .transform(price -> MapperUtils.quotationToBigDecimal(price).doubleValue());
     }
 
     // BBG008HNHZ07 NWLI
     @GET
     @Path("/spread")
-    public Spread getSpread() {
+    public Uni<Spread> getSpread() {
         GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG00W9LF2G5");
-        System.out.println(orderbook);
+//        System.out.println(orderbook);
         return spreadService.calcSpread(orderbook);
     }
 
     @GET
     @Path("/figi")
-    public void getFigi() {
-         findFigiService.findFigi();
+    public Uni<List<String>> getFigi() {
+         return findFigiService.findFigi();
     }
 
     @GET
@@ -151,14 +148,18 @@ public class VertxController {
     @GET
     @Path("/event-bus-test")
     public void eventBusTest(){
-        OrderStateDto dto = new OrderStateDto();
-        dto.setTicker("PLAY");
-        dto.setStatus("Новая");
-        dto.setDirection("Покупка");
-        dto.setCurrency("USD");
-        dto.setInitialPrice(BigDecimal.valueOf(345.7));
-        dto.setOrderId(UUID.randomUUID().toString());
-        bus.send(GlobalBusAddress.LOG_ORDER, dto, new DeliveryOptions().setCodecName(OrderStateDtoCodec.NAME));
+//        OrderStateDto dto = new OrderStateDto();
+//        dto.setTicker("PLAY");
+//        dto.setStatus("Новая");
+//        dto.setDirection("Покупка");
+//        dto.setCurrency("USD");
+//        dto.setInitialPrice(BigDecimal.valueOf(345.7));
+//        dto.setOrderId(UUID.randomUUID().toString());
+//        bus.send(GlobalBusAddress.LOG_ORDER, dto, new DeliveryOptions().setCodecName(OrderStateDtoCodec.NAME));
+
+        bus.send("LOG", List.of("PLAY")//,
+//                new DeliveryOptions().setCodecName(ListCodec.class.getName())
+        );
     }
 
     @GET
@@ -171,6 +172,25 @@ public class VertxController {
             log.info(">>> Timer " + LocalTime.now() + ' ' + millis);
         });
 
+    }
+
+    @GET
+    @Path("/subscribe-test")
+    public void subscribeTest(){
+        log.info(">>> Subscribe Test");
+        List<String> figi1 = List.of("BBG000BXQ7R1");
+        orderbookService.unsucscribeOrderbook(figi1);
+        orderbookService.subscribeOrderBook(figi1, (orderBook) -> {
+            log.info(">>> Subscribe 1 " + orderBook);
+            //processOrderbook(orderBook);
+        });
+
+        List<String> figi = List.of("BBG000BXQ7R1", "BBG00W9LF2G5");
+        orderbookService.unsucscribeOrderbook(figi);
+        orderbookService.subscribeOrderBook(figi, (orderBook) -> {
+            log.info(">>> Subscribe 2 " + orderBook);
+            //processOrderbook(orderBook);
+        });
     }
 
 }

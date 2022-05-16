@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
+import ru.tinkoff.piapi.core.stream.MarketDataSubscriptionService;
 import ru.tinkoff.piapi.core.stream.StreamProcessor;
 import ru.tinkoff.piapi.core.utils.MapperUtils;
 
@@ -37,10 +38,15 @@ public class OrderbookService {
             } else if (response.hasPing()) {
                 log.info("пинг сообщение, figi {}", figi);
             } else if (response.hasOrderbook()) {
-                log.info("новый данные по стакану " + response.getOrderbook());
+//                log.info("новый данные по стакану " + response.getOrderbook());
                 listener.accept(response.getOrderbook());
             } else if (response.hasTrade()) {
                 log.info("Новые данные по сделкам: {}", response);
+            } else if (response.hasSubscribeOrderBookResponse()) {
+                var successCount = response.getSubscribeOrderBookResponse().getOrderBookSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
+                var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
+                log.info("удачных подписок на стакан: {}", successCount);
+                log.info("неудачных подписок на стакан: {}", errorCount);
             }
         };
 
@@ -50,13 +56,13 @@ public class OrderbookService {
                 .newStream(ORDERBOOK_STREAM_NAME, processor, onErrorCallback)
                 .subscribeOrderbook(figi, 1);
 
-        api.getMarketDataStreamService()
-                .newStream("trades_stream", processor, onErrorCallback)
-                .subscribeTrades(figi);
-
-        api.getMarketDataStreamService()
-                .newStream("last_prices_stream", processor, onErrorCallback)
-                .subscribeLastPrices(figi);
+//        api.getMarketDataStreamService()
+//                .newStream("trades_stream", processor, onErrorCallback)
+//                .subscribeTrades(figi);
+//
+//        api.getMarketDataStreamService()
+//                .newStream("last_prices_stream", processor, onErrorCallback)
+//                .subscribeLastPrices(figi);
     }
 
 
@@ -83,9 +89,11 @@ public class OrderbookService {
     }
 
     public void unsucscribeOrderbook(List<String> figi) {
-        api.getMarketDataStreamService()
-                .getStreamById(ORDERBOOK_STREAM_NAME)
-                .unsubscribeOrderbook(figi, 1);
+        MarketDataSubscriptionService stream = api.getMarketDataStreamService()
+                .getStreamById(ORDERBOOK_STREAM_NAME);
+        if (stream != null) {
+            stream.unsubscribeOrderbook(figi, 1);
+        }
     }
 
     public GetOrderBookResponse getOrderbook(String figi) {

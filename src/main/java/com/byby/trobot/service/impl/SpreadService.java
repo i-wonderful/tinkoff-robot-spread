@@ -7,14 +7,13 @@ import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
+import ru.tinkoff.piapi.core.InstrumentsService;
 import ru.tinkoff.piapi.core.InvestApi;
+import ru.tinkoff.piapi.core.MarketDataService;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,28 +26,30 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 public class SpreadService {
     private static final Logger log = LoggerFactory.getLogger(SpreadService.class);
 
-    @Inject
-    InvestApi api;
+    private final MarketDataService marketDataService;
+    private final InstrumentsService instrumentsService;
+    private final SharesService sharesService;
 
-    @Inject
-    SharesService sharesService;
+    public SpreadService(InvestApi api, SharesService sharesService) {
+        this.instrumentsService = api.getInstrumentsService();
+        this.marketDataService = api.getMarketDataService();
+        this.sharesService = sharesService;
+    }
 
-    public Spread calcSpread(OrderBook orderBook) {
+    public Uni<Spread> calcSpread(OrderBook orderBook) {
         String figi = orderBook.getFigi();
         if (orderBook.getAsksCount() < 1 || orderBook.getBidsCount() < 1) {
-            //log.info(">>> Empty Order book, figi {} ", figi);
-            return new Spread(figi, BigDecimal.ZERO, 0.0);
+            return Uni.createFrom().item(new Spread(figi, BigDecimal.ZERO, 0.0));
         }
         Order ask = orderBook.getAsks(0);
         Order bid = orderBook.getBids(0);
         return calcSpread(ask, bid, figi);
     }
 
-    public Spread calcSpread(GetOrderBookResponse orderBook) {
+    public Uni<Spread> calcSpread(GetOrderBookResponse orderBook) {
         String figi = orderBook.getFigi();
         if (orderBook.getAsksCount() < 1 || orderBook.getBidsCount() < 1) {
-            //log.info(">>> Empty Order book, figi {} ", figi);
-            return new Spread(figi);
+            return Uni.createFrom().item(new Spread(figi));
         }
         Order ask = orderBook.getAsks(0);
         Order bid = orderBook.getBids(0);
@@ -56,15 +57,21 @@ public class SpreadService {
     }
 
     public Uni<Spread> getSpread(String figi) {
-       return Uni.createFrom().completionStage(api.getMarketDataService().getOrderBook(figi, 1))
-               .onItem()
-               .transform(orderBookResponse -> calcSpread(orderBookResponse))
-               ;
+        return Uni.createFrom().completionStage(marketDataService.getOrderBook(figi, 1))
+                .onItem()
+                .transformToUni(orderBookResponse -> calcSpread(orderBookResponse));
     }
 
     public Spread getSpreadSync(String figi) {
         return getSpread(figi).await().indefinitely();
     }
+
+//    public List<Spread> getSpreadsSync(List<Share> share) {
+//        return share.stream()
+//                .map(Share::getFigi)
+//                .map(this::getSpreadSync)
+//                .collect(Collectors.toList());
+//    }
 
     public Multi<Spread> getSpreads(List<Share> share) {
         List<Uni<Spread>> spreads = share.stream()
@@ -76,37 +83,59 @@ public class SpreadService {
         return Multi.createFrom().iterable(spreads).onItem()
                 .transformToMulti(Uni::toMulti)
                 .merge();
-       // return Multi.createFrom().iterable(spreads) ;
+        // return Multi.createFrom().iterable(spreads) ;
     }
 
-    public List<Spread> getSpread(List<String> figi) {
-        return figi.stream()
-                .map(f -> getSpreadSync(f))
-                .filter(spread -> !BigDecimal.ZERO.equals(spread.getDiff())) // todo убрать?
-                .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
-                .collect(Collectors.toList());
-    }
+//    public List<Spread> getSpread(List<String> figi) {
+//        return figi.stream()
+//                .map(f -> getSpreadSync(f))
+//                .filter(spread -> !BigDecimal.ZERO.equals(spread.getDiff())) // todo убрать?
+//                .sorted(Comparator.comparingDouble(Spread::getPercent).reversed())
+//                .collect(Collectors.toList());
+//    }
 
 
-    private Spread calcSpread(Order ask, Order bid, String figi) {
+    private Uni<Spread> calcSpread(Order ask, Order bid, String figi) {
         BigDecimal askPrice = quotationToBigDecimal(ask.getPrice());
 
-//        log.info(">>> current prices: bid=" + bid.getPrice() + ", ask="+ask.getPrice());
-        BigDecimal nextBidPrice = quotationToBigDecimal(calcNextBidPrice(figi, bid));
-        BigDecimal nextAskPrice = quotationToBigDecimal(calcNextAskPrice(figi, ask));
-//        log.info(">>> Calc optimal prices: bid=" + nextBidPrice + ", ask=" + nextAskPrice);
-        BigDecimal diff = nextAskPrice.subtract(nextBidPrice);
-        double percent = calcSpreadPercent(diff, askPrice);
+        /*
+        (figi)
+                .onItem()
+                .transform(minPriceIncrement ->
+                        Quotation.newBuilder()
+                                .setUnits(bidPrice.getUnits() + minPriceIncrement.getUnits())
+                                .setNano(bidPrice.getNano() + minPriceIncrement.getNano())
+                                .build());
+        * */
+        Uni uni0 = minPriceIncrement(figi);
+//        Uni<Quotation> uni1 = calcNextBidPrice(figi, bid);
+//        Uni<Quotation> uni2 = uni1.chain(quotation -> calcNextAskPrice(figi, ask));
 
-        Spread spread = new Spread();
-        spread.setFigi(figi);
-        spread.setDiff(diff);
-        spread.setPercent(percent);
-        spread.setNextBidPrice(nextBidPrice);
-        spread.setNextAskPrice(nextAskPrice);
-        spread.setTicker(sharesService.findTickerByFigi(figi));
+//        uni1.subscribe().with(quotation -> calcNextAskPrice(figi, ask));
+        return Uni.combine().all()
+                .unis(minPriceIncrement(figi),
+                        sharesService.findTickerByFigi(figi))
+                .asTuple()
+                .onItem()
+                .transform(triple -> {
+                    Quotation minPriceIncrement = triple.getItem1();
+                    String ticker = triple.getItem2();
 
-        return spread;
+                    BigDecimal nextBidPrice = quotationToBigDecimal(Helper.priceBidAddIncrement(bid.getPrice(), minPriceIncrement));
+                    BigDecimal nextAskPrice = quotationToBigDecimal(Helper.priceAskMinusIncrement(ask.getPrice(), minPriceIncrement));
+
+                    BigDecimal diff = nextAskPrice.subtract(nextBidPrice);
+                    double percent = calcSpreadPercent(diff, askPrice);
+
+                    Spread spread = new Spread();
+                    spread.setFigi(figi);
+                    spread.setDiff(diff);
+                    spread.setPercent(percent);
+                    spread.setNextBidPrice(nextBidPrice);
+                    spread.setNextAskPrice(nextAskPrice);
+                    spread.setTicker(ticker);
+                    return spread;
+                });
     }
 
     /**
@@ -126,10 +155,10 @@ public class SpreadService {
                 .doubleValue();
     }
 
-    public Quotation calcNextBidPrice(GetOrderBookResponse orderBookResponse) {
+    public Uni<Quotation> calcNextBidPrice(GetOrderBookResponse orderBookResponse) {
         if (orderBookResponse.getBidsCount() < 1) {
             log.info(">>> Bids count is 0");
-            return Quotation.newBuilder().build();
+            return Uni.createFrom().item(Quotation.newBuilder().build());
         }
         String figi = orderBookResponse.getFigi();
         Order bid = orderBookResponse.getBids(0);
@@ -144,48 +173,47 @@ public class SpreadService {
      * @param bid  заявка покупки из стакана
      * @return
      */
-    public Quotation calcNextBidPrice(String figi, Order bid) {
+    public Uni<Quotation> calcNextBidPrice(String figi, Order bid) {
         return calcNextBidPrice(figi, bid.getPrice());
     }
 
-    public Quotation calcNextBidPrice(String figi, Quotation bidPrice) {
-        //        log.info(">>> Bid price: " + MapperUtils.quotationToBigDecimal(bid.getPrice()));
-        var minPriceIncrement = minPriceIncrement(figi);
-        var price = Quotation.newBuilder()
-                .setUnits(bidPrice.getUnits() + minPriceIncrement.getUnits())
-                .setNano(bidPrice.getNano() + minPriceIncrement.getNano())
-                .build();
-        return price;
+    public Uni<Quotation> calcNextBidPrice(String figi, Quotation bidPrice) {
+        return minPriceIncrement(figi)
+                .onItem()
+                .transform(minPriceIncrement -> Helper.priceBidAddIncrement(bidPrice, minPriceIncrement));
     }
 
 
     /**
-     * Посчитать оптимальныую цену для продажи по лимитной заявке.
-     * Цена на один шаг ниже последней заявки на продажу из стакана.
+     * Посчитать оптимальную цену для <b>продажи</b> по лимитной заявке.
+     * Цена на один шаг выше последней заявки на продажу из стакана.
      *
-     * @param figi
-     * @param ask  заявка продажи из стакана
+     * @param figi идентификатор акции
+     * @param ask  верхняя заявка продажи из стакана
      * @return
      */
-    public Quotation calcNextAskPrice(String figi, Order ask) {
+    public Uni<Quotation> calcNextAskPrice(String figi, Order ask) {
         return calcNextAskPrice(figi, ask.getPrice());
     }
 
-    public Quotation calcNextAskPrice(String figi, Quotation askPrice) {
-        //        log.info(">>> Ask price: " + MapperUtils.quotationToBigDecimal(ask.getPrice()));
-        var minPriceIncrement = minPriceIncrement(figi);
-//        log.info(">>> price increment: " + MapperUtils.quotationToBigDecimal(minPriceIncrement));
-        var price = Quotation.newBuilder()
-                .setUnits(askPrice.getUnits() - minPriceIncrement.getUnits())
-                .setNano(askPrice.getNano() - minPriceIncrement.getNano())
-                .build();
-        return price;
+    public Uni<Quotation> calcNextAskPrice(String figi, Quotation askPrice) {
+        return minPriceIncrement(figi)
+                .onItem()
+                .transform(minPriceIncrement -> Helper.priceAskMinusIncrement(askPrice, minPriceIncrement));
     }
 
+//    @Deprecated
+//    @CacheResult(cacheName = "min-price-increment-sync")
+//    protected Quotation minPriceIncrementSync(String figi) {
+//        return minPriceIncrement(figi).await().indefinitely();
+//    }
+
     @CacheResult(cacheName = "min-price-increment")
-    protected Quotation minPriceIncrement(String figi) {
-        return api.getInstrumentsService()
-                .getInstrumentByFigiSync(figi)
-                .getMinPriceIncrement();
+    protected Uni<Quotation> minPriceIncrement(String figi) {
+//        log.info(">>> minPriceIncrement " + figi);
+        return Uni.createFrom()
+                .completionStage(instrumentsService.getInstrumentByFigi(figi))
+                .onItem()
+                .transform(instrument -> instrument.getMinPriceIncrement());
     }
 }

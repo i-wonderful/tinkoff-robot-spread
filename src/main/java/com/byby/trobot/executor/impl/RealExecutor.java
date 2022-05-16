@@ -32,14 +32,14 @@ public class RealExecutor implements Executor {
     }
 
     @Override
-    public PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price) {
+    public Uni<PostOrderResponse> postBuyLimitOrder(String figi, BigDecimal price) {
         log.info(">>> todo. Real. Выставить заявку на покупку");
         // todo
         return null;
     }
 
     @Override
-    public PostOrderResponse postSellLimitOrder(String figi, BigDecimal price) {
+    public Uni<PostOrderResponse> postSellLimitOrder(String figi, BigDecimal price) {
         log.info(">>> todo. Real. Post Sell Order");
         return null;
     }

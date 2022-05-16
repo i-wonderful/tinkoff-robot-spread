@@ -10,6 +10,8 @@ public class GlobalBusAddress {
     public static final String LOG_ORDER = "LOG_ORDER";
     // Лог ошибок в ui
     public static final String LOG_ERR = "LOG_ERR";
+    //
+    public static final String NEW_FIGI = "NEW_FIGI";
     // Выставить заявку на покупу
     public static final String POST_BUY_ORDER = "POST_BUY_ORDER";
     // Выставить заяввку на продажу

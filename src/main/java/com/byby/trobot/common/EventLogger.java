@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static ru.tinkoff.piapi.contract.v1.OrderDirection.*;
 import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
+import ru.tinkoff.piapi.core.exception.ApiRuntimeException;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -43,7 +44,7 @@ public class EventLogger {
     }
 
     public Uni log(String message, String figi) {
-        String ticker = sharesService.findTickerByFigi(figi);
+        String ticker = sharesService.findTickerByFigiSync(figi);
         log.info("[" + ticker + "] " + message + ", figi: " + figi);
         bus.publish(LOG, "[" + ticker + "] " + message);
         return Uni.createFrom().voidItem();
@@ -51,7 +52,7 @@ public class EventLogger {
 
     public Uni log(String message, List<String> figis) {
         String tickers = figis.stream()
-                .map(figi -> sharesService.findTickerByFigi(figi))
+                .map(figi -> sharesService.findTickerByFigiSync(figi))
                 .collect(Collectors.joining(","));
         log.info("[" + tickers + "] " + message);
         bus.publish(LOG, "[" + tickers + "] " + message);
@@ -80,11 +81,16 @@ public class EventLogger {
 
     public Uni logOrderCancel(String orderId, String figi) {
         String template = "[%s] Отменена заявка. orderId=%s";
-        String ticker = sharesService.findTickerByFigi(figi);
+        String ticker = sharesService.findTickerByFigiSync(figi);
         String message = String.format(template, ticker, orderId);
         bus.publish(LOG, message);
         bus.publish(LOG_ORDER, String.format("[%s] Cancel orderId=%s", ticker, orderId));
         log.info(message);
         return Uni.createFrom().voidItem();
+    }
+
+    public void logError(Exception exception) {
+        log.error(">>> !!!!!!!!!!!!!!!!!!!!!!", exception);
+        bus.publish(GlobalBusAddress.LOG, ">>> Exception " + exception.getMessage());
     }
 }

@@ -1,24 +1,28 @@
 package com.byby.trobot.strategy.impl;
 
 import com.byby.trobot.common.EventLogger;
+import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.dto.codec.ListCodec;
 import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.service.impl.SpreadService;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.eventbus.EventBus;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.Share;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class SpreadFindFigiService implements FindFigiService {
@@ -40,8 +44,8 @@ public class SpreadFindFigiService implements FindFigiService {
     @Inject
     ApplicationProperties properties;
 
-    @Inject
-    StrategyCacheManager cacheManager;
+    @ConfigProperty(name = "robot.strategy.shares.count.one.minute")
+    int sharesCountOneMinute;
 
     /**
      * Ищем кандидатов на покупку.
@@ -55,59 +59,64 @@ public class SpreadFindFigiService implements FindFigiService {
     public Uni<List<String>> findFigi() {
         eventLogger.log("Ищем акции...");
 
-        int countOneTimer = 200;
-
         List<String> exchanges = exchangeService.getExchangesOpenNow();
-        List<Share> sharesAll = sharesService.getShares(List.of("SPB"));// TODO for testing
-        eventLogger.log(String.format("Получено %d акций с бирж %s", sharesAll.size(), exchanges));
-
-        int countTimers = sharesAll.size() / countOneTimer + 1;
-        log.info(">>> Count Timers: " + countTimers);
-
-        Uni<List<String>> firstFigi = findFirst(sharesAll, countOneTimer);
-
-        for (int i = 1; i < countTimers; i++) {
-            boolean isLastTimer = (i == (countTimers - 1));
-            int startIndex = i * countOneTimer;
-            int endIndex = isLastTimer ? sharesAll.size() : (i + 1) * countOneTimer;
-
-            List<Share> sharesOneTimer = sharesAll.subList(startIndex, endIndex);
-            runTimer(sharesOneTimer, i, isLastTimer, startIndex, endIndex);
-        }
+        Uni<List<Share>> sharesUni = sharesService.getShares(exchanges);
+        Uni<List<String>> firstFigi = sharesUni
+                .invoke(shares -> {
+                    eventLogger.log(String.format("Получено %d акций с бирж %s", shares.size(), exchanges));
+                    runTimers(shares, sharesCountOneMinute);
+                })
+                .onItem()
+                .transformToUni(shares -> findFirstFigi(shares, sharesCountOneMinute));
 
         return firstFigi;
     }
 
-    private Uni<List<String>> findFirst(List<Share> sharesAll, int endIndex){
+    private Uni<List<String>> findFirstFigi(List<Share> sharesAll, int endIndex) {
+        endIndex = Math.min(sharesAll.size(), endIndex);
         List<Share> shares = sharesAll.subList(0, endIndex);
-        eventLogger.log(String.format("Отбираем подходящие акции среди пенвых %d", endIndex));
+        eventLogger.log(String.format("Отбираем подходящие акции среди первых %d", endIndex));
         return findFigi(shares);
     }
 
-    private void runTimer(List<Share> shares, int i, boolean isLastTimer, int startIndex, int endIndex) {
+    private void runTimers(List<Share> shares, int countOneTimer) {
+        int countTimers = shares.size() / countOneTimer + 1;
+        log.info(">>> Count Timers: " + (countTimers - 1));
+        for (int i = 1; i < countTimers; i++) {
+            int startIndex = i * countOneTimer;
+            int endIndex = Math.min((i + 1) * countOneTimer, shares.size());
+
+            List<Share> sharesOneTimer = shares.subList(startIndex, endIndex);
+            runTimer(sharesOneTimer, i, startIndex, endIndex);
+        }
+    }
+
+    private void runTimer(List<Share> shares, int i, int startIndex, int endIndex) {
         long millis = TimeUnit.MINUTES.toMillis(i);
         vertx.setTimer(millis, aLong -> {
             eventLogger.log(String.format("Timer %d. Отбираем подходящие акции среди %d-%d", i, startIndex, endIndex));
-            log.info(">>> Timer " + LocalTime.now() + ' ' + millis);
             findFigi(shares);
-
-//            if (isLastTimer) {
-//                log.info(">>>> Last Timer >>>");
-//                // todo оповестить об окончании глобального поиска
-//            }
         });
     }
 
+    /**
+     * @param shares
+     * @return
+     */
     private Uni<List<String>> findFigi(List<Share> shares) {
-        return spreadService.getSpreads(shares)
+        Uni<List<String>> figisFind = spreadService.getSpreads(shares)
                 .filter(spread -> properties.getRobotSpreadPercent() <= spread.getPercent())
+                //.invoke(spread -> log.info(">>> Spread : " +spread))
                 .map(Spread::getFigi)
-                .collect().asList()
-                .onItem()
-                .transformToUni(figi -> cacheManager.addFigi(figi))
-                .invoke(() -> {
-                    bus.send("NEW_FIGI", "");
-                });
+                .collect().asList();
+
+        figisFind.subscribe().with(figi -> {
+            eventLogger.log("Найдены акции", figi);
+            // todo сделать списком отправление
+            bus.send(GlobalBusAddress.NEW_FIGI, figi.stream().collect(Collectors.joining(",")));
+        });
+
+        return figisFind;
     }
 
 }

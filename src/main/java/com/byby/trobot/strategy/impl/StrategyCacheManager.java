@@ -28,6 +28,7 @@ public class StrategyCacheManager {
     }
 
     public Uni<List<String>> addFigi(List<String> figiNew) {
+        log.info(">>> Add to cache: " + figiNew);
         return getFigi()
                 .onItem()
                 .transformToUni(

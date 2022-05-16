@@ -1,6 +1,5 @@
 package com.byby.trobot.executor.impl;
 
-import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.SandboxProperties;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.mapper.PortfolioMapper;
@@ -10,13 +9,11 @@ import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.service.impl.SpreadService;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
-import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 import ru.tinkoff.piapi.core.SandboxService;
-import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
@@ -24,7 +21,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static com.byby.trobot.dto.mapper.PortfolioMapper.*;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 
 /**
@@ -70,25 +66,27 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
      * Выставить лимитную заявку на покупку.
      */
     @Override
-    public PostOrderResponse postBuyLimitOrder(String figi, BigDecimal price) {
-        return sandboxService.postOrderSync(figi,
+    public Uni<PostOrderResponse> postBuyLimitOrder(String figi, BigDecimal price) {
+        return Uni.createFrom().completionStage(sandboxService.postOrder(
+                figi,
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_BUY,
                 getAccountId(),
                 OrderType.ORDER_TYPE_LIMIT,
-                UUID.randomUUID().toString());
+                UUID.randomUUID().toString()));
     }
 
     @Override
-    public PostOrderResponse postSellLimitOrder(String figi, BigDecimal price) {
-        return  sandboxService.postOrderSync(figi,
+    public Uni<PostOrderResponse> postSellLimitOrder(String figi, BigDecimal price) {
+        return Uni.createFrom().completionStage(sandboxService.postOrder(
+                figi,
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_SELL,
                 getAccountId(),
                 OrderType.ORDER_TYPE_LIMIT,
-                UUID.randomUUID().toString());
+                UUID.randomUUID().toString()));
     }
 
     /**
@@ -96,7 +94,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
      * В сандбоксе заявка не существует в реальном стакане,
      * поэтому ставнивем цену моей заявки и цену на шаг выше заявки на покупку из стакана.
      *
-     * @param myBuyOrder заявка песочницы
+     * @param myBuyOrder       заявка песочницы
      * @param bidFromOrderbook верхняя заявка на покупку из стакана
      * @return является ли мой заявка оптимальной
      */
@@ -106,12 +104,14 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
             log.warn(">>> Bid form orderbook is null.");
             return true;
         }
-        BigDecimal nextBidPrice = quotationToBigDecimal(spreadService.calcNextBidPrice(
-                myBuyOrder.getFigi(),
-                bidFromOrderbook.getPrice()));
+        BigDecimal nextBidPrice = quotationToBigDecimal(
+                spreadService.calcNextBidPrice(
+                                myBuyOrder.getFigi(),
+                                bidFromOrderbook.getPrice())
+                        .await().indefinitely()); // todo ?
         BigDecimal myBidPrice = moneyValueToBigDecimal(myBuyOrder.getInitialSecurityPrice());
 
-        return  nextBidPrice.compareTo(myBidPrice) == 0;
+        return nextBidPrice.compareTo(myBidPrice) == 0;
     }
 
     /**
@@ -119,7 +119,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
      * В сандбоксе заявка не существует в реальном стакане,
      * поэтому ставнивем цену моей заявки и цену на шаг ниже заявки на продажу из стакана.
      *
-     * @param myOrderSell заявка песочницы
+     * @param myOrderSell      заявка песочницы
      * @param askFromOrderbook
      * @return
      */
@@ -129,9 +129,9 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
             log.warn(">>> Ask form orderbook is null.");
             return true;
         }
-        BigDecimal nextAskPrice = quotationToBigDecimal(spreadService.calcNextAskPrice(
-                myOrderSell.getFigi(),
-                askFromOrderbook.getPrice()));
+        BigDecimal nextAskPrice = quotationToBigDecimal(
+                spreadService.calcNextAskPrice(myOrderSell.getFigi(), askFromOrderbook.getPrice())
+                        .await().indefinitely()); //  todo ?
         BigDecimal myAskPrice = moneyValueToBigDecimal(myOrderSell.getInitialSecurityPrice());
 
         return nextAskPrice.compareTo(myAskPrice) == 0;
@@ -139,7 +139,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
 
     @Override
     public void cancelOrder(String orderId) {
-        log.info(">>> cancel Order Sandbox 1, orderId= " + orderId);
+        log.info(">>> cancel Order Sandbox 1, orderId=" + orderId);
         sandboxService.cancelOrder(getAccountId(), orderId);
         log.info(">>> cancel Order Sandbox 2, orderId= " + orderId);
     }
