@@ -8,7 +8,9 @@ import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 
-
+/**
+ * Действия робота: запуск, остановка и тд.
+ */
 @Path("/strategy")
 @ApplicationScoped
 public class StrategyController {
@@ -21,14 +23,17 @@ public class StrategyController {
      */
     @GET
     @Path("/start")
-    public void start() {
-        strategyManager.start();
+    public Uni start() {
+        return strategyManager.start();
     }
 
+    /**
+     * Остановить отслеживание акций.
+     */
     @GET
     @Path("/stop")
-    public void stop() {
-        strategyManager.stop();
+    public Uni<Void> stop() {
+        return strategyManager.stop();
     }
 
     /**
@@ -40,13 +45,4 @@ public class StrategyController {
         return Uni.createFrom().item(strategyManager.isRun());
     }
 
-    /**
-     * Отменить все заявки
-     */
-    @GET
-    @Path("/cancel-all-orders")
-    public Uni cancelAllOrders() {
-        strategyManager.cancelAllOrders();
-        return Uni.createFrom().voidItem();
-    }
 }

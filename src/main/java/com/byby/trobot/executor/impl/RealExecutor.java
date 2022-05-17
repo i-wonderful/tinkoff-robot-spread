@@ -11,6 +11,7 @@ import ru.tinkoff.piapi.core.InvestApi;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "false")
@@ -19,17 +20,13 @@ public class RealExecutor implements Executor {
     private static final Logger log = LoggerFactory.getLogger(RealExecutor.class);
 
     private InvestApi api;
+    private String accountId;
 
     public RealExecutor(InvestApi api) {
         log.info(">>> Init Real Executor");
         this.api = api;
     }
 
-    @Override
-    public String getAccountId() {
-        // todo
-        return null;
-    }
 
     @Override
     public Uni<PostOrderResponse> postBuyLimitOrder(String figi, BigDecimal price) {
@@ -65,13 +62,16 @@ public class RealExecutor implements Executor {
         return false;
     }
 
+
     @Override
-    public void cancelOrder(String orderId) {
+    public Uni<Instant> cancelOrder(String orderId) {
         log.info(">>> cancelBuyOrder Real ");
+        return null;
     }
 
     @Override
-    public Uni cancelAllOrders() {
+    public Uni<Void> cancelAllOrders() {
+        // todo
         return Uni.createFrom().voidItem();
     }
 
@@ -84,6 +84,6 @@ public class RealExecutor implements Executor {
     @Override
     public Uni<List<OrderState>> getMyOrders() {
         return Uni.createFrom()
-                .completionStage(api.getOrdersService().getOrders(getAccountId()));
+                .completionStage(api.getOrdersService().getOrders(this.accountId));
     }
 }

@@ -4,6 +4,8 @@ import static com.byby.trobot.common.GlobalBusAddress.*;
 
 import com.byby.trobot.dto.codec.ListCodec;
 import com.byby.trobot.dto.codec.OrderStateDtoCodec;
+import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.SharesService;
 import io.vertx.ext.bridge.PermittedOptions;
@@ -12,8 +14,10 @@ import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.ext.web.Router;
 import io.vertx.mutiny.ext.web.handler.sockjs.SockJSHandler;
 
+import javax.annotation.PreDestroy;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import java.util.List;
 
@@ -23,6 +27,8 @@ public class ApplicationInit {
     Vertx vertx;
     @Inject
     SharesService sharesService;
+    @Inject
+    StrategyManager strategyManager;
 
     public void init(@Observes Router router) {
         System.out.println(">>> Init App");
@@ -39,6 +45,16 @@ public class ApplicationInit {
         vertx.eventBus().registerCodec(new ListCodec());
 
         // init cache
-        sharesService.getShares().subscribe().with(shares -> System.out.println(">>> Get Shares init"));
+        sharesService.getShares()
+                .subscribe()
+                .with(shares -> System.out.println(">>> GetShares cache init"));
+    }
+
+    @PreDestroy
+    public void preDestroy() {
+        strategyManager.stop()
+                .subscribe()
+                .with(unused -> System.out.println(">>> Stop strategy"))
+        ;
     }
 }

@@ -1,4 +1,4 @@
-package com.byby.trobot.strategy.impl;
+package com.byby.trobot.cache;
 
 import io.quarkus.cache.*;
 import io.smallrye.mutiny.Uni;
@@ -16,9 +16,6 @@ public class StrategyCacheManager {
     private static final String FIGI_KEY = "figi";
 
     @Inject
-    CacheManager cacheManager;
-
-    @Inject
     @CacheName("my-cache-figi")
     Cache cache;
 
@@ -27,7 +24,13 @@ public class StrategyCacheManager {
         return addFigi(List.of(figi));
     }
 
-    public Uni<List<String>> addFigi(List<String> figiNew) {
+    /**
+     * Добавить в кеш список Figi.
+     *
+     * @param figiNew список для добавления
+     * @return новый кеш со всеми итемами
+     */
+    public Uni<List<String>> addFigi(final List<String> figiNew) {
         log.info(">>> Add to cache: " + figiNew);
         return getFigi()
                 .onItem()
@@ -39,6 +42,7 @@ public class StrategyCacheManager {
     }
 
     public Uni<List<String>> clearAndAddFigi(final List<String> figi) {
+        log.info(">>> clearAndAddFigi " + figi);
         return cache.invalidate(FIGI_KEY)
                 .onItem()
                 .transformToUni(t -> cache.get(FIGI_KEY, (String key) -> figi));
@@ -50,7 +54,7 @@ public class StrategyCacheManager {
 
     public Uni<List<String>> getFigi() {
         return cache.get(FIGI_KEY, key -> {
-                    log.info(">>> Empty cache");
+            //log.info(">>> Empty cache");
                     return new ArrayList<>();
                 }
         );

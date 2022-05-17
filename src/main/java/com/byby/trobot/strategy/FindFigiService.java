@@ -11,4 +11,9 @@ public interface FindFigiService {
      * @return
      */
     Uni<List<String>> findFigi();
+
+    /**
+     *
+     */
+    void stopTimers();
 }

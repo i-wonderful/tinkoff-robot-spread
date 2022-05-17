@@ -1,5 +1,6 @@
 package com.byby.trobot.strategy.impl;
 
+import com.byby.trobot.cache.StrategyCacheManager;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
@@ -187,7 +188,7 @@ public class SpreadStrategy implements Strategy {
             postBuyLimitOrder(figi, spread.getNextBidPrice());
         } else {
             if (isMyBuyOrderOptimal(myBid, bidOrderbook)) {
-                eventLogger.log("Оптимальная заявка на покупку уже есть. price=" + MapperUtils.moneyValueToBigDecimal(myBid.getInitialSecurityPrice()), figi);
+                eventLogger.log(String.format("Оптимальная заявка на покупку уже есть. price=%f", MapperUtils.moneyValueToBigDecimal(myBid.getInitialSecurityPrice())), figi);
             } else {
                 // отменяем предыдущую
                 //bus.send(CANCEL_ORDER, myBid.getOrderId());

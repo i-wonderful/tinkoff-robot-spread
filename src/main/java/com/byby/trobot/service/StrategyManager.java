@@ -1,11 +1,13 @@
 package com.byby.trobot.service;
 
+import io.smallrye.mutiny.Uni;
+
 public interface StrategyManager {
-    void start();
+    Uni<Void> start();
 
-    void stop();
+    Uni<Void> stop();
 
-    void cancelAllOrders();
+    Uni<Void> cancelAllOrders();
 
     boolean isRun();
 }

@@ -11,6 +11,7 @@ import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,14 +25,18 @@ public class OrderMapper {
     public Uni<List<OrderStateDto>> toDto(Uni<List<OrderState>> orderStates) {
         return orderStates
                 .onItem()
-                .transformToUni(os -> Uni.join().all(
-                                os.stream()
-                                        .map(this::toDto)
-                                        .collect(Collectors.toList()))
-                        .andCollectFailures());
-//       Uni.combine().all().unis(orderStates.stream()
-//                .map(this::toDto)
-//                .collect(Collectors.toList())).;
+                .transformToUni(os -> toDto(os));
+    }
+
+    private Uni<List<OrderStateDto>> toDto(List<OrderState> orderStates){
+        if (orderStates == null || orderStates.isEmpty()) {
+           return Uni.createFrom().item(Collections.emptyList());
+        }
+
+        return Uni.join().all(orderStates.stream()
+                                .map(this::toDto)
+                                .collect(Collectors.toList()))
+                .andCollectFailures();
     }
 
     public Uni<OrderStateDto> toDto(OrderState orderState) {
@@ -59,7 +64,7 @@ public class OrderMapper {
         dto.setFigi(order.getFigi());
         dto.setInitialPrice(moneyValueToBigDecimal(order.getInitialSecurityPrice()));
         dto.setCurrency(order.getInitialSecurityPrice().getCurrency());
-//        dto.setTicker(sharesService.findTickerByFigi(order.getFigi()));
+        dto.setTicker(sharesService.findTickerByFigiSync(order.getFigi()));
         return dto;
     }
 

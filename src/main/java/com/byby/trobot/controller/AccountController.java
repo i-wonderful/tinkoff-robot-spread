@@ -80,12 +80,20 @@ public class AccountController {
     }
 
     /**
+     * Отменить все заявки
+     */
+    @GET
+    @Path("/cancel-all-orders")
+    public Uni<Void> cancelAllOrders() {
+        return executor.get().cancelAllOrders();
+    }
+
+    /**
      * Пересоздать аккаунт песочницы
      */
     @GET
     @Path("/recreate-sandbox")
-    public Uni recreateSandbox() {
-        sandboxAccountService.recreateSandbox();
-        return Uni.createFrom().voidItem();
+    public Uni<String> recreateSandbox() {
+        return sandboxAccountService.recreateSandbox();
     }
 }

@@ -1,19 +1,18 @@
 package com.byby.trobot.controller;
 
+import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.*;
 import com.byby.trobot.strategy.impl.SpreadFindFigiService;
 import com.byby.trobot.strategy.impl.SpreadStrategy;
-import com.byby.trobot.strategy.impl.StrategyCacheManager;
+import com.byby.trobot.cache.StrategyCacheManager;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;
-import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.GetOrderBookResponse;
 import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.inject.Instance;
@@ -59,13 +58,9 @@ public class VertxController {
     @Inject
     Instance<Executor> executor;
 
-//    @GET
-//    @Path("/hello")
-//    public Uni<String> hello(@QueryParam("name") String name) {
-//        return bus.<String>request("greetings", name)
-//                .onItem()
-//                .transform(response -> response.body());
-//    }
+    @Inject
+    AppCache appCache;
+
 
     //BBG004S68BR5
     @GET
@@ -91,8 +86,9 @@ public class VertxController {
     @GET
     @Path("/calcprice")
     public Uni<Double> calcMinBuyPrice() {
-        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG00W9LF2G5");
-        return spreadService.calcNextBidPrice(orderbook)
+        return orderbookService.getOrderbook("BBG00W9LF2G5")
+                .onItem()
+                .transformToUni(orderbook -> spreadService.calcNextBidPrice(orderbook))
                 .onItem()
                 .transform(price -> MapperUtils.quotationToBigDecimal(price).doubleValue());
     }
@@ -101,32 +97,33 @@ public class VertxController {
     @GET
     @Path("/spread")
     public Uni<Spread> getSpread() {
-        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG00W9LF2G5");
-//        System.out.println(orderbook);
-        return spreadService.calcSpread(orderbook);
+        return orderbookService.getOrderbook("BBG00W9LF2G5")
+                .onItem()
+                .transformToUni(orderbook -> spreadService.calcSpread(orderbook));
     }
 
     @GET
     @Path("/figi")
     public Uni<List<String>> getFigi() {
-         return findFigiService.findFigi();
+        log.info(">>> Find figi start");
+        return strategyManager.runFindFigi();
     }
 
     @GET
     @Path("/cache-get")
     public List<String> getFromCache(){
-        log.info(">>> GetFromCache ");
+        log.info(">>> GetFromCache getFigiSync");
         return cacheManager.getFigiSync();
     }
 
 
     @GET
     @Path("/cache-add")
-    public Uni addToCache(){
+    public Uni addToCache() {
 //        cacheManager.invalidateAndAddFigi(List.of("One " + new Random().nextInt()));
-       Uni uni1 = cacheManager.addFigi("First");
-       Uni uni2 = cacheManager.addFigi(List.of("1", "2"));
-       Uni uni3 = cacheManager.addFigi(List.of("3", "4"));
+        Uni uni1 = cacheManager.addFigi("First");
+        Uni uni2 = cacheManager.addFigi(List.of("1", "2"));
+        Uni uni3 = cacheManager.addFigi(List.of("3", "4"));
         return Uni.combine().all().unis(uni1, uni2, uni3).discardItems();
     }
 
@@ -141,13 +138,14 @@ public class VertxController {
     //figi='BBG00W9LF2G5', ticker='PRAX'
     @Path("/process")
     public void processOrderbook() {
-        GetOrderBookResponse orderbook = orderbookService.getOrderbook("BBG00W9LF2G5", 5);
-        strategy.processOrderbookTEST(orderbook);
+        orderbookService.getOrderbook("BBG00W9LF2G5", 5)
+                .subscribe()
+                .with(orderbook -> strategy.processOrderbookTEST(orderbook));
     }
 
     @GET
     @Path("/event-bus-test")
-    public void eventBusTest(){
+    public void eventBusTest() {
 //        OrderStateDto dto = new OrderStateDto();
 //        dto.setTicker("PLAY");
 //        dto.setStatus("Новая");
@@ -164,7 +162,7 @@ public class VertxController {
 
     @GET
     @Path("/timer-test")
-    public void vertxTimerTest(){
+    public void vertxTimerTest() {
         log.info(">>> Timer Test " + LocalTime.now());
 
         long millis = TimeUnit.MINUTES.toMillis(1);
@@ -176,7 +174,7 @@ public class VertxController {
 
     @GET
     @Path("/subscribe-test")
-    public void subscribeTest(){
+    public void subscribeTest() {
         log.info(">>> Subscribe Test");
         List<String> figi1 = List.of("BBG000BXQ7R1");
         orderbookService.unsucscribeOrderbook(figi1);

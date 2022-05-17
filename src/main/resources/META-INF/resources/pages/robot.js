@@ -35,7 +35,7 @@ export default {
                 });
         },
         onCancelAllOrders() {
-            axios.get("/strategy/cancel-all-orders")
+            axios.get("/account/cancel-all-orders")
                 .then(resp => {
                     this.getCurrentOrders();
                 });
@@ -79,8 +79,7 @@ export default {
     ,
 
     template: `
-      
-        <h1>{{title}}</h1>
+        <h5>{{title}}</h5>
         <div class="grid">
             <div class="col-3">Биржи:</div>
             <div class="col-9">

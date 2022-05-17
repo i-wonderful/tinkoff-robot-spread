@@ -10,14 +10,15 @@ import ru.tinkoff.piapi.core.InstrumentsService;
 import ru.tinkoff.piapi.core.InvestApi;
 
 import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Singleton;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * Операции с акциями
  */
+@Singleton
 @Startup
-@ApplicationScoped
 public class SharesService {
     private static final Logger log = LoggerFactory.getLogger(SharesService.class);
 
@@ -71,7 +72,7 @@ public class SharesService {
 
     @CacheResult(cacheName = "name-by-figi-cache")
     public String findNameByFigi(String figi) {
-        log.info(">>> findNameByFigi");
+        log.info(">>> findNameByFigi " + figi);
         return getSharesSync().stream()
                 .filter(sh -> figi.equals(sh.getFigi()))
                 .findFirst()
@@ -89,7 +90,7 @@ public class SharesService {
 
     @CacheResult(cacheName = "shares-cache")
     public Uni<List<Share>> getShares() {
-        log.info(">>> Get All Shares Async");
+        log.info(">>> API Call: instrumentsService.getTradableShares()");
         return Uni.createFrom().completionStage(instrumentsService.getTradableShares())
                 .onItem()
                 .transform(shares -> shares.stream()
@@ -100,7 +101,7 @@ public class SharesService {
     @Deprecated
     @CacheResult(cacheName = "shares-cache-sync")
     protected List<Share> getSharesSync() {
-        System.out.println(">>> GetShares Sync");
+        log.info(">>> API Call: instrumentsService.getTradableSharesSync()");
         return instrumentsService.getTradableSharesSync()
                 .stream()
                 .filter(share -> Boolean.TRUE.equals(share.getApiTradeAvailableFlag()))

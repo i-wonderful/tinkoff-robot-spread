@@ -1,11 +1,11 @@
 package com.byby.trobot.executor.impl;
 
+import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.config.SandboxProperties;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.SandboxAccountService;
-import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.service.impl.SpreadService;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
@@ -15,11 +15,15 @@ import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 import ru.tinkoff.piapi.core.SandboxService;
 
+import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 
@@ -32,34 +36,62 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     private static final Logger log = LoggerFactory.getLogger(SandboxExecutor.class);
     private static final int QUANTITY_DEFAULT = 1;
 
-    private SharesService sharesService;
     private SandboxService sandboxService;
     private SpreadService spreadService;
     private PortfolioMapper portfolioMapper;
     private SandboxProperties properties;
-
+    private AppCache appCache;
     private String accountId;
 
-    public SandboxExecutor(SandboxProperties properties, InvestApi api, SharesService sharesService, SpreadService spreadService, PortfolioMapper portfolioMapper) {
-        log.info(">>> Init sandboxExecutor ");
+    public SandboxExecutor(SandboxProperties properties, InvestApi api, SpreadService spreadService, PortfolioMapper portfolioMapper, AppCache appCache) {
+        log.info(">>> Init SandboxExecutor ");
         this.properties = properties;
-        this.sharesService = sharesService;
         this.sandboxService = api.getSandboxService();
         this.spreadService = spreadService;
         this.portfolioMapper = portfolioMapper;
+        this.appCache = appCache;
     }
 
-    @Override
-    public String getAccountId() {
+    @PostConstruct
+    public void init() {
+        Uni.createFrom()
+                .completionStage(sandboxService.getAccounts())
+                .onItem()
+                .transformToUni(accounts ->
+                        findOpenAccountId(accounts)
+                                .map(accountId -> Uni.createFrom().item(accountId))
+                                .orElseGet(this::createNewAccount))
+                .subscribe()
+                .with(accountId -> {
+                    this.accountId = accountId;
+                    appCache.putAccountId(accountId);
+                });
+    }
+
+    public Uni<String> getAccountId() {
         if (accountId == null) {
-            accountId = sandboxService.getAccountsSync()
-                    .stream()
-                    .filter(account -> AccountStatus.ACCOUNT_STATUS_OPEN.equals(account.getStatus()))
-                    .findFirst()
-                    .map(Account::getId)
-                    .orElseGet(this::createNewAccount);
+            Uni<String> accountIdUni = Uni.createFrom()
+                    .completionStage(sandboxService.getAccounts())
+                    .onItem()
+                    .transformToUni(accounts -> findOpenAccountId(accounts)
+                            .map(accountId -> Uni.createFrom().item(accountId))
+                            .orElseGet(this::createNewAccount)
+                    );
+
+            accountIdUni
+                    .subscribe()
+                    .with(accountId -> this.accountId = accountId);
+
+            return accountIdUni;
         }
-        return accountId;
+        return Uni.createFrom().item(accountId);
+    }
+
+    private Optional<String> findOpenAccountId(List<Account> accounts) {
+        return accounts.stream()
+                .filter(account -> AccountStatus.ACCOUNT_STATUS_OPEN.equals(account.getStatus()))
+                .findFirst()
+                .map(Account::getId);
     }
 
     /**
@@ -72,11 +104,14 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_BUY,
-                getAccountId(),
+                this.accountId,
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString()));
     }
 
+    /**
+     * Выставить лимитную заявку на продажу.
+     */
     @Override
     public Uni<PostOrderResponse> postSellLimitOrder(String figi, BigDecimal price) {
         return Uni.createFrom().completionStage(sandboxService.postOrder(
@@ -84,7 +119,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
                 OrderDirection.ORDER_DIRECTION_SELL,
-                getAccountId(),
+                this.accountId,
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString()));
     }
@@ -92,11 +127,12 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     /**
      * Проверяем будет ли наша виртуальная заявка myBuyOrder оптимальной.
      * В сандбоксе заявка не существует в реальном стакане,
-     * поэтому ставнивем цену моей заявки и цену на шаг выше заявки на покупку из стакана.
+     * поэтому сравниваем цену моей заявки и цену на шаг выше заявки на покупку из стакана.
+     * Если они одинаковы, то заявка оптимальна.
      *
-     * @param myBuyOrder       заявка песочницы
+     * @param myBuyOrder       моя заявка песочницы
      * @param bidFromOrderbook верхняя заявка на покупку из стакана
-     * @return является ли мой заявка оптимальной
+     * @return является ли моя заявка оптимальной
      */
     @Override
     public boolean isMyBuyOrderOptimal(OrderState myBuyOrder, Order bidFromOrderbook) {
@@ -137,50 +173,71 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         return nextAskPrice.compareTo(myAskPrice) == 0;
     }
 
+
+    /**
+     * Отменить заявку.
+     */
     @Override
-    public void cancelOrder(String orderId) {
-        log.info(">>> cancel Order Sandbox 1, orderId=" + orderId);
-        sandboxService.cancelOrder(getAccountId(), orderId);
-        log.info(">>> cancel Order Sandbox 2, orderId= " + orderId);
+    public Uni<Instant> cancelOrder(String orderId) {
+        return Uni.createFrom()
+                .completionStage(sandboxService.cancelOrder(this.accountId, orderId));
     }
 
     @Override
     public Uni<PortfolioDto> getPortfolio() {
-        return Uni.createFrom()
-                .completionStage(sandboxService.getPortfolio(getAccountId()))
+        return getAccountId()
                 .onItem()
-                .transform(portfolioResponse -> portfolioMapper.toDto(portfolioResponse, getAccountId()));
+                .transformToUni(accountId ->
+                        Uni.createFrom()
+                                .completionStage(sandboxService.getPortfolio(accountId))
+                                .onItem()
+                                .transform(portfolioResponse -> portfolioMapper.toDto(portfolioResponse, accountId)));
     }
 
     @Override
     public Uni<List<OrderState>> getMyOrders() {
+        log.info(">>> API Call: sandboxService.getOrders(...)");
+        return getAccountId()
+                .onItem()
+                .transformToUni(accountId -> Uni.createFrom()
+                        .completionStage(sandboxService.getOrders(accountId)));
+    }
+
+    @Override
+    public Uni<Void> cancelAllOrders() {
+        return getMyOrders()
+                .onItem()
+                .transformToUni(orderStates -> orderStates.isEmpty() ?
+                        Uni.createFrom().voidItem() :
+                        Uni.combine().all().unis(
+                                orderStates.stream().map(o -> cancelOrder(o.getOrderId())).collect(Collectors.toList())
+                        ).discardItems()
+                );
+    }
+
+    @Override
+    public Uni<String> recreateSandbox() {
         return Uni.createFrom()
-                .completionStage(sandboxService.getOrders(getAccountId()));
+                .completionStage(sandboxService.closeAccount(this.accountId))
+                .onItem()
+                .transformToUni(v -> createNewAccount());
     }
 
-    @Override
-    public Uni cancelAllOrders() {
-        getMyOrders()
-                .subscribe()
-                .with(orderStates -> orderStates.forEach(o -> cancelOrder(o.getOrderId())));
-        return Uni.createFrom().voidItem();
-    }
-
-    @Override
-    public void recreateSandbox() {
-        sandboxService.closeAccount(getAccountId());
-        this.accountId = createNewAccount();
-    }
-
-    private String createNewAccount() {
-        log.info(">>> Create new sandbox account");
-        String accountId = sandboxService.openAccountSync();
-        MoneyValue balanceRub = bigDecimalToMoneyValue(properties.getInitBalanceRub());
-        MoneyValue balanceUsd = bigDecimalToMoneyValue(properties.getInitBalanceUsd(), "USD");
-        CompletableFuture payRub = sandboxService.payIn(accountId, balanceRub);
-        CompletableFuture payUsd = sandboxService.payIn(accountId, balanceUsd);
-        CompletableFuture.allOf(payRub, payUsd).join();
-        return accountId;
+    private Uni<String> createNewAccount() {
+        log.info(">>> API Call: sandboxService.openAccountSync");
+        return Uni.createFrom()
+                .completionStage(sandboxService.openAccount())
+                .onItem()
+                .call(accountId -> {
+                    MoneyValue balanceRub = bigDecimalToMoneyValue(properties.getInitBalanceRub());
+                    MoneyValue balanceUsd = bigDecimalToMoneyValue(properties.getInitBalanceUsd(), "USD");
+                    CompletableFuture payRub = sandboxService.payIn(accountId, balanceRub);
+                    CompletableFuture payUsd = sandboxService.payIn(accountId, balanceUsd);
+                    CompletableFuture.allOf(payRub, payUsd).join();
+                    appCache.putAccountId(accountId);
+                    this.accountId = accountId;
+                    return Uni.createFrom().item(accountId);
+                });
     }
 
 }

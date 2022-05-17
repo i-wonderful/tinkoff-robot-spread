@@ -3,11 +3,15 @@ package com.byby.trobot.service.impl;
 
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.quarkus.cache.CacheResult;
+import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
+import ru.tinkoff.piapi.core.MarketDataService;
+import ru.tinkoff.piapi.core.stream.MarketDataStreamService;
 import ru.tinkoff.piapi.core.stream.MarketDataSubscriptionService;
+import ru.tinkoff.piapi.core.stream.OrdersStreamService;
 import ru.tinkoff.piapi.core.stream.StreamProcessor;
 import ru.tinkoff.piapi.core.utils.MapperUtils;
 
@@ -24,10 +28,19 @@ public class OrderbookService {
     private static final Logger log = LoggerFactory.getLogger(OrderbookService.class);
     private static final String ORDERBOOK_STREAM_NAME = "my_orderbook";
 
-    @Inject
-    InvestApi api;
+    private MarketDataStreamService marketDataStreamService;
+    private MarketDataService marketDataService;
+    private OrdersStreamService ordersStreamService;
+
+    public OrderbookService(InvestApi api) {
+        this.marketDataStreamService = api.getMarketDataStreamService();
+        this.marketDataService =  api.getMarketDataService();
+//        this.ordersStreamService = api.getOrdersStreamService();
+    }
 
     /**
+     * Подписаться на изменения стакана
+     *
      * @param figi
      * @param listener
      */
@@ -52,7 +65,7 @@ public class OrderbookService {
 
         Consumer<Throwable> onErrorCallback = error -> log.error(error.toString());
 
-        api.getMarketDataStreamService()
+        marketDataStreamService
                 .newStream(ORDERBOOK_STREAM_NAME, processor, onErrorCallback)
                 .subscribeOrderbook(figi, 1);
 
@@ -85,23 +98,28 @@ public class OrderbookService {
 
         //Подписка стрим сделок. Не блокирующий вызов
         //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
-        api.getOrdersStreamService().subscribeTrades(consumer, onErrorCallback);
+        ordersStreamService.subscribeTrades(consumer, onErrorCallback);
     }
 
+    /**
+     * Отменить подписки на стаканы акций.
+     *
+     * @param figi список акций
+     */
     public void unsucscribeOrderbook(List<String> figi) {
-        MarketDataSubscriptionService stream = api.getMarketDataStreamService()
+        MarketDataSubscriptionService stream = marketDataStreamService
                 .getStreamById(ORDERBOOK_STREAM_NAME);
         if (stream != null) {
             stream.unsubscribeOrderbook(figi, 1);
         }
     }
 
-    public GetOrderBookResponse getOrderbook(String figi) {
+    public Uni<GetOrderBookResponse> getOrderbook(String figi) {
         return getOrderbook(figi, 1);
     }
 
-    public GetOrderBookResponse getOrderbook(String figi, int depth) {
-        return api.getMarketDataService().getOrderBookSync(figi, depth);
+    public Uni<GetOrderBookResponse> getOrderbook(String figi, int depth) {
+        return Uni.createFrom().completionStage(marketDataService.getOrderBook(figi, depth));
     }
 
 }
