@@ -10,7 +10,7 @@ public interface Strategy {
      *
      * @param figiUnsucscribe
      */
-    void stopListening(List<String> figiUnsucscribe);
+    Uni<Void> stopListening(List<String> figiUnsucscribe);
 
     /**
      *
@@ -18,8 +18,4 @@ public interface Strategy {
      */
     void start(List<String> figi);
 
-    /**
-     *
-     */
-    Uni<Void> stop();
 }

@@ -39,7 +39,7 @@ public class SpreadService {
     public Uni<Spread> calcSpread(OrderBook orderBook) {
         String figi = orderBook.getFigi();
         if (orderBook.getAsksCount() < 1 || orderBook.getBidsCount() < 1) {
-            return Uni.createFrom().item(new Spread(figi, BigDecimal.ZERO, 0.0));
+            return Uni.createFrom().item(new Spread(figi));
         }
         Order ask = orderBook.getAsks(0);
         Order bid = orderBook.getBids(0);
@@ -114,12 +114,13 @@ public class SpreadService {
 //        uni1.subscribe().with(quotation -> calcNextAskPrice(figi, ask));
         return Uni.combine().all()
                 .unis(minPriceIncrement(figi),
-                        sharesService.findTickerByFigi(figi))
+                        sharesService.findShareByFigi(figi))
                 .asTuple()
                 .onItem()
                 .transform(triple -> {
                     Quotation minPriceIncrement = triple.getItem1();
-                    String ticker = triple.getItem2();
+                    String ticker = triple.getItem2().getTicker();
+                    String currency = triple.getItem2().getCurrency();
 
                     BigDecimal nextBidPrice = quotationToBigDecimal(Helper.priceBidAddIncrement(bid.getPrice(), minPriceIncrement));
                     BigDecimal nextAskPrice = quotationToBigDecimal(Helper.priceAskMinusIncrement(ask.getPrice(), minPriceIncrement));
@@ -134,6 +135,7 @@ public class SpreadService {
                     spread.setNextBidPrice(nextBidPrice);
                     spread.setNextAskPrice(nextAskPrice);
                     spread.setTicker(ticker);
+                    spread.setCurrency(currency);
                     return spread;
                 });
     }

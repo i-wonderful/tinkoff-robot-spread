@@ -41,7 +41,7 @@ public class SpreadFindFigiService implements FindFigiService {
     @Inject
     SpreadService spreadService;
     @Inject
-    ApplicationProperties properties;
+    SpreadDecision spreadDecision;
 
     @ConfigProperty(name = "robot.strategy.shares.count.one.minute")
     int sharesCountOneMinute;
@@ -121,7 +121,7 @@ public class SpreadFindFigiService implements FindFigiService {
      */
     private Uni<List<String>> findFigi(List<Share> shares) {
         Uni<List<String>> figisFind = spreadService.getSpreads(shares)
-                .filter(this::isAppropriateSpread)
+                .filter(spreadDecision::isAppropriate)
                 .map(Spread::getFigi)
                 .collect().asList();
 
@@ -137,14 +137,6 @@ public class SpreadFindFigiService implements FindFigiService {
         return figisFind;
     }
 
-    /**
-     * Принять решение: подходящий ли спред.
-     *
-     * @param spread
-     * @return
-     */
-    private boolean isAppropriateSpread(Spread spread) {
-        return properties.getRobotSpreadPercent() <= spread.getPercent();
-    }
+
 
 }

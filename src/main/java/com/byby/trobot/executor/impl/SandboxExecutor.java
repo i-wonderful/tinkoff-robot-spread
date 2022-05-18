@@ -1,6 +1,7 @@
 package com.byby.trobot.executor.impl;
 
 import com.byby.trobot.cache.AppCache;
+import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.SandboxProperties;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.mapper.PortfolioMapper;
@@ -41,15 +42,17 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     private PortfolioMapper portfolioMapper;
     private SandboxProperties properties;
     private AppCache appCache;
+    private EventLogger eventLogger;
     private String accountId;
 
-    public SandboxExecutor(SandboxProperties properties, InvestApi api, SpreadService spreadService, PortfolioMapper portfolioMapper, AppCache appCache) {
+    public SandboxExecutor(SandboxProperties properties, InvestApi api, SpreadService spreadService, PortfolioMapper portfolioMapper, AppCache appCache, EventLogger eventLogger) {
         log.info(">>> Init SandboxExecutor ");
         this.properties = properties;
         this.sandboxService = api.getSandboxService();
         this.spreadService = spreadService;
         this.portfolioMapper = portfolioMapper;
         this.appCache = appCache;
+        this.eventLogger = eventLogger;
     }
 
     @PostConstruct
@@ -180,7 +183,8 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     @Override
     public Uni<Instant> cancelOrder(String orderId) {
         return Uni.createFrom()
-                .completionStage(sandboxService.cancelOrder(this.accountId, orderId));
+                .completionStage(sandboxService.cancelOrder(this.accountId, orderId))
+                .invoke(() -> eventLogger.log("Отменена заявка orderId=" + orderId));
     }
 
     @Override
@@ -188,10 +192,14 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         return getAccountId()
                 .onItem()
                 .transformToUni(accountId ->
-                        Uni.createFrom()
-                                .completionStage(sandboxService.getPortfolio(accountId))
+                        getPortfolio(accountId)
                                 .onItem()
                                 .transform(portfolioResponse -> portfolioMapper.toDto(portfolioResponse, accountId)));
+    }
+
+    private Uni<PortfolioResponse> getPortfolio(String accountId) {
+        return Uni.createFrom()
+                .completionStage(sandboxService.getPortfolio(accountId));
     }
 
     @Override

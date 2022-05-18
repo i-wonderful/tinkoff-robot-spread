@@ -1,6 +1,5 @@
 package com.byby.trobot.strategy.impl;
 
-import com.byby.trobot.cache.StrategyCacheManager;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.executor.Executor;
@@ -25,7 +24,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.byby.trobot.common.GlobalBusAddress.*;
+import static com.byby.trobot.strategy.impl.Helper.*;
 
 /**
  * Стратегия опеределяет что и когда купить и продать.
@@ -56,22 +55,17 @@ public class SpreadStrategy implements Strategy {
     @Inject
     EventLogger eventLogger;
     @Inject
-    StrategyCacheManager cacheManager;
+    SpreadDecision spreadDecision;
+
 
     @Override
-    public void stopListening(List<String> figiUnsucscribe) {
-        // отписываемся от старых
-        log.info(">>> StopListening. " + figiUnsucscribe);
-        orderbookService.unsucscribeOrderbook(figiUnsucscribe);
-    }
-
-    @Override
-    public void start(List<String> figis) {
-        log.info(">>> Start strategy. " + figis);
-        if (figis == null || figis.isEmpty()) {
-            eventLogger.log("!!! Список акций в стратегии не указан. Поменяйте настройки.");
+    public void start(List<String> figi) {
+        if (figi == null || figi.isEmpty()) {
+            eventLogger.log("!!! Список акций в стратегии не указан. Запуск не осуществлен.");
             return;
         }
+
+        eventLogger.log("Запуск стратегии. Отслеживаем акции.", figi);
 
         // подписываемся на сделки
         if (!properties.isSandboxMode()) {
@@ -82,55 +76,66 @@ public class SpreadStrategy implements Strategy {
         }
 
         // выставляем начальные заявки
-
-        // todo проверять наличие
-        figis.forEach(f -> {
-            spreadService.getSpread(f)
-                    .subscribe()
-                    .with(spread -> {
-                        if (isBigSpread(spread.getPercent())) {
-                            postBuyLimitOrder(spread.getFigi(), spread.getNextBidPrice());
-                            postSellLimitOrder(spread.getFigi(), spread.getNextAskPrice());
-                        }
+        // и подписываемся на стакан
+        postFirstOrders(figi)
+                .subscribe()
+                .with((t) -> {
+                    orderbookService.subscribeOrderBook(figi, (orderBook) -> {
+                        eventLogger.log("Подписываемся на стакан.", figi);
+                        processOrderbook(orderBook);
                     });
-        });
-
-
-        // подписываемся на новые
-        orderbookService.subscribeOrderBook(figis, (orderBook) -> {
-            processOrderbook(orderBook);
-        });
+                });
     }
 
+    /**
+     * Stop: Отписываемся от стаканов.
+     */
     @Override
-    public Uni<Void> stop() {
-        return cacheManager.getFigi()
-                .invoke(orderbookService::unsucscribeOrderbook)
-                .onItem()
-                .transformToUni(f -> cacheManager.clear());
+    public Uni<Void> stopListening(List<String> figiUnsucscribe) {
+        if (figiUnsucscribe != null && !figiUnsucscribe.isEmpty()) {
+            eventLogger.log("Отписываемся от стаканов", figiUnsucscribe);
+            orderbookService.unsucscribeOrderbook(figiUnsucscribe);
+        }
+        return Uni.createFrom().voidItem();
     }
 
-    // todo это метод для тестирования
-    public void processOrderbookTEST(GetOrderBookResponse orderBook) {
-        Uni<Spread> spread = spreadService.calcSpread(orderBook);
-        Order bidOrderbook = orderBook.getBidsCount() > 0 ?
-                orderBook.getBids(0) :
-                null;
-        Order askOrderbook = orderBook.getAsksCount() > 0 ?
-                orderBook.getAsks(0) :
-                null;
-        processOrderbook(spread.await().indefinitely(), bidOrderbook, askOrderbook);
+    private Uni<Void> postFirstOrders(List<String> figi) {
+        eventLogger.log("Выставляем первые заявки.", figi);
+        return Uni.join().all(figi.stream()
+                        .map(orderbookService::getOrderbook)
+                        .map(orderBookResponseUni -> orderBookResponseUni
+                                .onItem()
+                                .transformToUni(orderBookResponse -> processOrderbook(orderBookResponse)))
+                        .collect(Collectors.toList()))
+                .andCollectFailures()
+                .replaceWithVoid();
     }
 
+    /**
+     * @param orderBook
+     */
+    public Uni<Void> processOrderbook(GetOrderBookResponse orderBook) {
+        return spreadService.calcSpread(orderBook)
+                .call(spread -> {
+                    Order bid = getFirstBid(orderBook);
+                    Order ask = getFirstAsk(orderBook);
+                    processOrderbook(spread, bid, ask);
+                    return Uni.createFrom().voidItem();
+                })
+                .replaceWithVoid();
+    }
+
+    /**
+     * @param orderBook
+     */
     private void processOrderbook(OrderBook orderBook) {
-        Uni<Spread> spread = spreadService.calcSpread(orderBook);
-        Order bidOrderbook = orderBook.getBidsCount() > 0 ?
-                orderBook.getBids(0) :
-                null;
-        Order askOrderbook = orderBook.getAsksCount() > 0 ?
-                orderBook.getAsks(0) :
-                null;
-        processOrderbook(spread.await().indefinitely(), bidOrderbook, askOrderbook);
+        spreadService.calcSpread(orderBook)
+                .subscribe()
+                .with(s -> {
+                    Order bid = getFirstBid(orderBook);
+                    Order ask = getFirstAsk(orderBook);
+                    processOrderbook(s, bid, ask);
+                });
     }
 
     /**
@@ -141,27 +146,32 @@ public class SpreadStrategy implements Strategy {
      * @param bidOrderbook первая заявка на покупку
      * @param askOrderbook первая заявка на продажу
      */
-    public void processOrderbook(Spread spread, Order bidOrderbook, Order askOrderbook) {
+    private void processOrderbook(Spread spread, Order bidOrderbook, Order askOrderbook) {
         String figi = spread.getFigi();
         eventLogger.log(String.format("Новые данные по стакану, spread=%f, %f%%", spread.getDiff().doubleValue(), spread.getPercent()), figi);
 
         // мои заявки на покупку/продажу
         OrderPair myOrderPair = getMyCurrentOpenOrders(figi);
 
-        if (!isBigSpread(spread.getPercent())) {
+        if (!spreadDecision.isAppropriate(spread)) {
             // спред слишком маленький.
             // снимаем заявки на покупку, продажу если есть
             eventLogger.log("Спред меньше лимита. Убираем заявки если есть.", figi);
             cancelOrders(myOrderPair);
         } else {
             // спред подходящий.
-            // проверяем есть ли заявки на покупку и выставляем оптимальную
+            // проверяем есть ли заявки на покупку и выставляем оптимальные
             eventLogger.log("Спред подходящий. Проверяем наличие заявок buy/sell.", figi);
             processBuyOrder(myOrderPair.getBuy(), spread, bidOrderbook);
             processSellOrder(myOrderPair.getSell(), spread, askOrderbook);
         }
     }
 
+    /**
+     * @param myAsk
+     * @param spread
+     * @param askOrderbook
+     */
     private void processSellOrder(OrderState myAsk, Spread spread, Order askOrderbook) {
         String figi = spread.getFigi();
         if (myAsk == null) {
@@ -172,9 +182,7 @@ public class SpreadStrategy implements Strategy {
                 eventLogger.log("Оптимальная заявка на продажу уже есть.", figi);
             } else {
                 // отменяем предыдущую
-                //bus.send(CANCEL_ORDER, myAsk.getOrderId());
-                executor.get().cancelOrder(myAsk.getOrderId());
-                eventLogger.logOrderCancel(myAsk.getOrderId(), figi);
+                cancelOrder(myAsk);
                 // Выставляем новую
                 postSellLimitOrder(figi, spread.getNextAskPrice());
             }
@@ -191,9 +199,7 @@ public class SpreadStrategy implements Strategy {
                 eventLogger.log(String.format("Оптимальная заявка на покупку уже есть. price=%f", MapperUtils.moneyValueToBigDecimal(myBid.getInitialSecurityPrice())), figi);
             } else {
                 // отменяем предыдущую
-                //bus.send(CANCEL_ORDER, myBid.getOrderId());
-                executor.get().cancelOrder(myBid.getOrderId());
-                eventLogger.logOrderCancel(myBid.getOrderId(), figi);
+                cancelOrder(myBid);
                 // Выставляем новую
                 postBuyLimitOrder(figi, spread.getNextBidPrice());
             }
@@ -228,32 +234,38 @@ public class SpreadStrategy implements Strategy {
     }
 
     /**
-     * Отменить заявки.
+     * Отменить заявку.
+     *
+     * @param order
+     */
+    private void cancelOrder(OrderState order) {
+        if (order == null) {
+            return;
+        }
+        String orderId = order.getOrderId();
+        String figi = order.getFigi();
+        OrderDirection orderDirection = order.getDirection();
+        executor.get().cancelOrder(orderId)
+                .subscribe()
+                .with((t) -> eventLogger.logOrderCancel(orderId, figi, orderDirection));
+    }
+
+    /**
+     * Отменить пару заявок в спреде.
+     *
+     * @param orderPair текущие заявки из спреда
      */
     private void cancelOrders(OrderPair orderPair) {
-        if (orderPair.getBuy() != null) {
-            // todo
-            bus.send(CANCEL_ORDER, orderPair.getBuy().getOrderId());
-        }
-        if (orderPair.getSell() != null) {
-            bus.send(CANCEL_ORDER, orderPair.getSell().getOrderId());
-        }
+        cancelOrder(orderPair.getBuy());
+        cancelOrder(orderPair.getBuy());
     }
 
     /**
      * Открытые в данный момент пара заявков: на покупку и на продажу
      */
     private OrderPair getMyCurrentOpenOrders(String figi) {
-        OrderPair orderPair = new OrderPair();
         List<OrderState> orders = getMyCurrentOpenOrderStates(figi);
-        orders.forEach(orderState -> {
-            if (OrderDirection.ORDER_DIRECTION_BUY.equals(orderState.getDirection())) {
-                orderPair.setBuy(orderState);
-            } else if (OrderDirection.ORDER_DIRECTION_SELL.equals(orderState.getDirection())) {
-                orderPair.setSell(orderState);
-            }
-        });
-        return orderPair;
+        return getOrderPair(orders);
     }
 
     /**
@@ -266,17 +278,6 @@ public class SpreadStrategy implements Strategy {
                 .filter(os -> os.getExecutionReportStatus().equals(OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW))
                 .filter(os -> figi.equals(os.getFigi()))
                 .collect(Collectors.toList());
-    }
-
-
-    /**
-     * Достаточно ли большой спред чтобы выставить заявки.
-     *
-     * @param spreadPercent
-     * @return
-     */
-    private boolean isBigSpread(double spreadPercent) {
-        return properties.getRobotSpreadPercent() <= spreadPercent;
     }
 
 }

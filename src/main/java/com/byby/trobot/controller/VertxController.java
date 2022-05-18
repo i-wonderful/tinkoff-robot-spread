@@ -127,11 +127,6 @@ public class VertxController {
         return Uni.combine().all().unis(uni1, uni2, uni3).discardItems();
     }
 
-//    @GET
-//    @Path("/spread-find-figi-service-test")
-//    public Uni spreadFindFigiServiceTest(){
-//        return findFigiService.findFigi(null);
-//    }
 
     @GET
     // figi='BBG000BXQ7R1', ticker='ZNH'
@@ -140,7 +135,7 @@ public class VertxController {
     public void processOrderbook() {
         orderbookService.getOrderbook("BBG00W9LF2G5", 5)
                 .subscribe()
-                .with(orderbook -> strategy.processOrderbookTEST(orderbook));
+                .with(orderbook -> strategy.processOrderbook(orderbook));
     }
 
     @GET
@@ -190,5 +185,24 @@ public class VertxController {
             //processOrderbook(orderBook);
         });
     }
+
+//    @GET
+//    @Path("/get-order-pair")
+//    public RestResponse getMyCurrentOpenOrders() {
+//        List<OrderState> orderStates = new ArrayList<>();
+//        OrderState os1 = OrderState.newBuilder().setDirection(OrderDirection.ORDER_DIRECTION_BUY)
+//                .setInitialSecurityPrice(MoneyValue.newBuilder().setUnits(50).build())
+//                .build();
+//        OrderState os2 = OrderState.newBuilder().setDirection(OrderDirection.ORDER_DIRECTION_BUY)
+//                .setInitialSecurityPrice(MoneyValue.newBuilder().setUnits(60).build())
+//                .build();
+//        OrderState os3 = OrderState.newBuilder().setDirection(OrderDirection.ORDER_DIRECTION_BUY)
+//                .setInitialSecurityPrice(MoneyValue.newBuilder().setUnits(30).build())
+//                .build();
+//        orderStates.add(os1);
+//        orderStates.add(os2);
+//        orderStates.add(os3);
+//        return RestResponse.ok(Helper.getOrderPair(orderStates).getBuy().getInitialSecurityPrice().getUnits());
+//    }
 
 }

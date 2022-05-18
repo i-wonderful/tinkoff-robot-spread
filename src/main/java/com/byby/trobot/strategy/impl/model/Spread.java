@@ -7,7 +7,7 @@ public class Spread {
     private String ticker;
     private BigDecimal diff;
     private double percent;
-
+    private String currency;
     // bid покупка. максимально выгодная цена для покупки, на шаг выше существующих
     private BigDecimal nextBidPrice;
     // ask продажа. максимально выгодная цена продажи, на шаг ниже сужествующих
@@ -16,23 +16,11 @@ public class Spread {
     public Spread() {
     }
 
-    //    public Spread(String figi, String ticker, BigDecimal diff, double percent) {
-//        this.figi = figi;
-//        this.ticker = ticker;
-//        this.diff = diff;
-//        this.percent = percent;
-//    }
-//
-    public Spread(String figi, BigDecimal diff, double percent) {
-        this.figi = figi;
-        this.diff = diff;
-        this.percent = percent;
-    }
-
     public Spread(String figi) {
         this.figi = figi;
         this.diff = BigDecimal.ZERO;
         this.percent = 0.0;
+        this.currency = "";
     }
 
     public String getFigi() {
@@ -67,16 +55,6 @@ public class Spread {
         this.percent = percent;
     }
 
-    @Override
-    public String toString() {
-        return "Spread{" +
-                "figi='" + figi + '\'' +
-                ", ticker='" + ticker + '\'' +
-                ", diff=" + diff +
-                ", percent=" + percent +
-                '}';
-    }
-
     public BigDecimal getNextBidPrice() {
         return nextBidPrice;
     }
@@ -91,5 +69,23 @@ public class Spread {
 
     public void setNextAskPrice(BigDecimal nextAskPrice) {
         this.nextAskPrice = nextAskPrice;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
+    }
+
+    @Override
+    public String toString() {
+        return "Spread{" +
+                "figi='" + figi + '\'' +
+                ", ticker='" + ticker + '\'' +
+                ", diff=" + diff +
+                ", percent=" + percent +
+                '}';
     }
 }

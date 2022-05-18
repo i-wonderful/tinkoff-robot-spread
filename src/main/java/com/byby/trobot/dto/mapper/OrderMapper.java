@@ -9,9 +9,9 @@ import ru.tinkoff.piapi.contract.v1.OrderState;
 import ru.tinkoff.piapi.contract.v1.PostOrderResponse;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,18 +25,23 @@ public class OrderMapper {
     public Uni<List<OrderStateDto>> toDto(Uni<List<OrderState>> orderStates) {
         return orderStates
                 .onItem()
-                .transformToUni(os -> toDto(os));
+                .transformToUni(os -> toDtoUni(os));
     }
 
-    private Uni<List<OrderStateDto>> toDto(List<OrderState> orderStates){
+    public Uni<List<OrderStateDto>> toDtoUni(List<OrderState> orderStates) {
         if (orderStates == null || orderStates.isEmpty()) {
-           return Uni.createFrom().item(Collections.emptyList());
+            return Uni.createFrom().item(Collections.emptyList());
         }
-
-        return Uni.join().all(orderStates.stream()
-                                .map(this::toDto)
-                                .collect(Collectors.toList()))
-                .andCollectFailures();
+        return Uni.join().all(
+                                orderStates.stream()
+                                        .map(this::toDto)
+                                        .collect(Collectors.toList()))
+                        .andCollectFailures()
+                        .onItem()
+                        .transform(orderStateDtos ->
+                                orderStateDtos.stream()
+                                        .sorted(Comparator.comparing(OrderStateDto::getTicker))
+                                        .collect(Collectors.toList()));
     }
 
     public Uni<OrderStateDto> toDto(OrderState orderState) {
@@ -46,21 +51,20 @@ public class OrderMapper {
                     OrderStateDto dto = new OrderStateDto();
                     dto.setOrderId(orderState.getOrderId());
                     dto.setStatus(getStatus(orderState.getExecutionReportStatus()));
-                    dto.setDirection(getDirection(orderState.getDirection()));
+                    dto.setDirection(getDirectionRus(orderState.getDirection()));
                     dto.setFigi(orderState.getFigi());
                     dto.setInitialPrice(moneyValueToBigDecimal(orderState.getInitialSecurityPrice()));
                     dto.setCurrency(orderState.getCurrency());
                     dto.setTicker(ticker);
                     return dto;
                 });
-
     }
 
     public OrderStateDto toDto(PostOrderResponse order) {
         OrderStateDto dto = new OrderStateDto();
         dto.setOrderId(order.getOrderId());
         dto.setStatus(getStatus(order.getExecutionReportStatus()));
-        dto.setDirection(getDirection(order.getDirection()));
+        dto.setDirection(getDirectionRus(order.getDirection()));
         dto.setFigi(order.getFigi());
         dto.setInitialPrice(moneyValueToBigDecimal(order.getInitialSecurityPrice()));
         dto.setCurrency(order.getInitialSecurityPrice().getCurrency());
@@ -87,7 +91,7 @@ public class OrderMapper {
         }
     }
 
-    private String getDirection(OrderDirection direction) {
+    public static String getDirectionRus(OrderDirection direction) {
         switch (direction) {
             case ORDER_DIRECTION_BUY:
                 return "Покупка";

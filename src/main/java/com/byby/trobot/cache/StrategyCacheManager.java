@@ -1,5 +1,6 @@
 package com.byby.trobot.cache;
 
+import com.byby.trobot.common.EventLogger;
 import io.quarkus.cache.*;
 import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
@@ -18,6 +19,9 @@ public class StrategyCacheManager {
     @Inject
     @CacheName("my-cache-figi")
     Cache cache;
+
+    @Inject
+    EventLogger eventLogger;
 
     public Uni addFigi(String figi) {
         log.info(">>> addToCacheFigi " + figi);
@@ -49,15 +53,12 @@ public class StrategyCacheManager {
     }
 
     public Uni<Void> clear() {
-        return cache.invalidate(FIGI_KEY);
+        return cache.invalidate(FIGI_KEY)
+                .invoke(() -> eventLogger.log("Кеш figi очищен"));
     }
 
     public Uni<List<String>> getFigi() {
-        return cache.get(FIGI_KEY, key -> {
-            //log.info(">>> Empty cache");
-                    return new ArrayList<>();
-                }
-        );
+        return cache.get(FIGI_KEY, key -> new ArrayList<>());
     }
 
     public List<String> getFigiSync() {

@@ -51,6 +51,12 @@ export default {
                     }
                 })
         },
+        getIsRun() {
+            axios.get("/strategy/isrun")
+                .then(response => {
+                    this.isRun = response.data;
+                })
+        },
 
         // todo for testing
         oneTick() {
@@ -60,12 +66,26 @@ export default {
     mounted() {
         this.eventBus = new EventBus('/eventbus');
         this.eventBus.onopen = () => {
-            console.log(">>> Open Event bus");
             this.eventBus.registerHandler('LOG', (error, message) => {
                 this.logs.push(message.body);
             });
             this.eventBus.registerHandler('LOG_ORDER', (error, message) => {
-                this.logOrders.push(message.body);
+                const order = message.body;
+                const uiAction = order.uiAction;
+                const orderIdNew = order.orderId;
+                if (uiAction == "ADD") {
+                    this.logOrders.push(message.body);
+                } else if (uiAction == "REMOVE") {
+                    const orderFind = this.logOrders.find(order => {
+                        if (order.orderId === orderIdNew) {
+                            return order;
+                        }
+                    });
+                    const index = this.logOrders.indexOf(orderFind);
+                    this.logOrders.splice(index, 1);
+                } else {
+                    console.warn("Not found uiAction");
+                }
             });
         }
 
@@ -75,10 +95,11 @@ export default {
             });
 
         this.getCurrentOrders();
-    }
-    ,
+        this.getIsRun();
+    },
 
     template: `
+    <div>
         <h5>{{title}}</h5>
         <div class="grid">
             <div class="col-3">Биржи:</div>
@@ -93,10 +114,10 @@ export default {
                     <br/>
                 </div>
             </div>
-        </div>  
-        
+        </div>
+    
         <div>
-            <button @click="onStart" >Go</button>
+            <button @click="onStart" v-if="isRun==false">Start</button>
             <button @click="oneTick">One tick</button>
             <button @click="onCancelAllOrders">Отменить все заявки</button>
             <button @click="onStop" v-if="isRun" >Stop</button>
@@ -134,7 +155,7 @@ export default {
             </div>
         </div>
         
-
+    </div>
       
     `
 }

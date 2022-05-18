@@ -8,8 +8,10 @@ public class OrderStateDto {
     private String direction;
     private String figi;
     private String ticker;
+    // цена за 1 шт.
     private BigDecimal initialPrice;
     private String currency;
+    private String uiAction;
 
     public String getOrderId() {
         return orderId;
@@ -65,5 +67,13 @@ public class OrderStateDto {
 
     public void setTicker(String ticker) {
         this.ticker = ticker;
+    }
+
+    public String getUiAction() {
+        return uiAction;
+    }
+
+    public void setUiAction(String uiAction) {
+        this.uiAction = uiAction;
     }
 }

@@ -41,12 +41,6 @@ public class StrategyManagerImpl implements StrategyManager {
     @Inject
     Instance<Executor> executor;
 
-    // todo как этим пользоваться
-//    @Inject
-//    ThreadContext threadContext;
-//    @Inject
-//    ManagedExecutor managedExecutor;
-
     @Inject
     StrategyCacheManager cacheManager;
 
@@ -56,7 +50,9 @@ public class StrategyManagerImpl implements StrategyManager {
     @Inject
     SharesService sharesService;
 
+    // запущена ли в данный момент
     private boolean isRun = false;
+    // найдено ли нужное количество акций
     private boolean isAllFigiFind = false;
 
     @Override
@@ -80,12 +76,17 @@ public class StrategyManagerImpl implements StrategyManager {
         if (!this.isRun) {
             eventLogger.log("Не запущен");
             return Uni.createFrom().voidItem();
-        } else {
-            this.isRun = false;
-            this.isAllFigiFind = false;
         }
 
-        return Uni.combine().all().unis(cacheManager.clear(), strategy.stop()).discardItems();
+        return cacheManager.getFigi()
+                .call(figi -> strategy.stopListening(figi))
+                .call(() -> cacheManager.clear())
+                .call(() -> eventLogger.log("Остановлен."))
+                .invoke(() -> {
+                    this.isRun = false;
+                    this.isAllFigiFind = false;
+                })
+                .replaceWithVoid();
     }
 
     @Override
@@ -100,8 +101,8 @@ public class StrategyManagerImpl implements StrategyManager {
 
     /**
      * Ищем кандидатов на покупку.
-     * Если указан параметр robot.strategy.find.buy.tickers, то берем их.
-     * Если не указан, то ищем согласно стратегии.
+     * Если указан параметр в настройках robot.strategy.find.buy.tickers, то берем их.
+     * Если не указан, то ищем согласно условиям отбора стратегии.
      *
      * @return список figi
      */
@@ -116,22 +117,31 @@ public class StrategyManagerImpl implements StrategyManager {
         }
     }
 
+    /**
+     * Загрузить из настроек акции
+     * на которых будет работать стратегия.
+     *
+     * @return список figi
+     */
     private List<String> figiFromProperties() {
         List<String> tickers = properties.getFindBuyTickers();
-
-        if (tickers != null && !tickers.isEmpty()) {
-            eventLogger.log(String.format("Будем торговать акциями из настроек tickers=%s", tickers));
-            return sharesService.findByTicker(tickers).stream()
-                    .map(Share::getFigi)
-                    .collect(Collectors.toList());
-        } else {
+        if (tickers == null || tickers.isEmpty()) {
             return Collections.emptyList();
         }
+        eventLogger.log(String.format("Будем торговать акциями из настроек tickers=%s", tickers));
+        return sharesService.findByTicker(tickers).stream()
+                .map(Share::getFigi)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Event: Найдены новые подходящие акции.
+     * Обработчик события: Найдены новые подходящие акции.
+     *
+     * Оперирует с новым найденными и уже имеющимися акциями.
+     * Сохраняет в кеше.
      * Запускаем стратегию.
+     *
+     * @param newFigiArray список новых подходящих акций (figi через запятую)
      */
     @ConsumeEvent(value = GlobalBusAddress.NEW_FIGI, blocking = true)
     public void newFigiFoundAndStartStrategy(String newFigiArray) {
@@ -148,55 +158,28 @@ public class StrategyManagerImpl implements StrategyManager {
             return;
         }
 
+        // Берем акции из кэша по которым уже запущена стратегия, останавливаем подписку на стаканы.
+        // Новые найденные акции добавляем к списку из кэша, оставляем нужное их количество указанное в настройках,
+        // если нужное количесво акций найдено, останавливаем таймеры.
+        // Кладем все нужные акции в кеш.
+        // Запускаем стратегию.
         cacheManager.getFigi()
-                .invoke((oldFigi) -> strategy.stopListening(oldFigi))
+                .call((oldFigi) -> strategy.stopListening(oldFigi))
                 .onItem()
-                .transformToUni(oldFigi -> {
-
-                    List<String> addToCache = Streams.concat(oldFigi.stream(), newFigi.stream()).collect(Collectors.toList());
-                    if (addToCache.size() >= properties.getSharesMaxCount()) {
-                        // todo сделать остановку тайметор
+                .transform(oldFigi -> {
+                    List<String> allAddToCache = Streams.concat(oldFigi.stream(), newFigi.stream())
+                            .limit(properties.getSharesMaxCount())
+                            .collect(Collectors.toList());
+                    if (allAddToCache.size() == properties.getSharesMaxCount()) {
                         eventLogger.log("Найдено нужное количество акций " + properties.getSharesMaxCount());
-                        addToCache = addToCache.subList(0, properties.getSharesMaxCount());
                         this.isAllFigiFind = true;
                         findFigiService.stopTimers();
                     }
-                    log.info(">>> Добавляем в кеш: " + addToCache);
-                    return cacheManager
-                            .addFigi(addToCache)
-                            .invoke(allFigi -> eventLogger.log("Отслеживаем акции", allFigi));
+                    return allAddToCache;
                 })
+                .call(allAddToCache -> cacheManager.clearAndAddFigi(allAddToCache))
                 .subscribe()
                 .with(strategy::start);
     }
-
-
-//    @ConsumeEvent(value = GlobalBusAddress.POST_BUY_ORDER, blocking = true)
-//    // todo сделать полностью неблокирующий вызов
-//    public void postBuyLimitOrder(String figi) {
-//
-//        //PostOrderResponse response = executor.get().postBuyLimitOrder(figi, );
-//        //String orderId = response.getOrderId();
-//
-//       // cacheOrders.put(figi, List.of(orderId));
-//    }
-
-
-//    @ConsumeEvent(value = GlobalBusAddress.CANCEL_ORDER, blocking = true)
-//    public void cancelOrder(String orderId) {
-//        log.info(">>> Cancel order " + orderId);
-//
-//        executor.get().cancelOrder(orderId);
-////        eventLogger.log(">>> Cancel Buy Order", figi);
-////
-////        List<String> orders = cacheOrders.get(figi);
-////        orders.forEach(orderId -> {
-////                    log.info(">>> OrderId " + orderId);
-////                    executor.get().cancelBuyOrder(orderId);
-////                }
-////        );
-//
-//    }
-
 
 }

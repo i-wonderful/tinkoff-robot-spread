@@ -76,7 +76,9 @@ public class AccountController {
     @GET
     @Path("/orders")
     public Uni<List<OrderStateDto>> getOrders() {
-        return orderMapper.toDto(executor.get().getMyOrders());
+        return executor.get().getMyOrders()
+                .onItem()
+                .transformToUni(orderStates -> orderMapper.toDtoUni(orderStates));
     }
 
     /**

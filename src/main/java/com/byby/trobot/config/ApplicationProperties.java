@@ -5,6 +5,7 @@ import io.smallrye.config.WithDefault;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,28 +36,22 @@ public class ApplicationProperties {
     @ConfigProperty(name= "robot.strategy.shares.max.count")
     int sharesMaxCount;
 
+    @ConfigProperty(name = "robot.strategy.shares.price.max.usd")
+    BigDecimal shareMaxPriceUsd;
+
+    @ConfigProperty(name = "robot.strategy.shares.price.max.rub")
+    BigDecimal shareMaxPriceRub;
+
     public String getFigiUsd() {
         return figiUsd;
-    }
-
-    public void setFigiUsd(String figiUsd) {
-        this.figiUsd = figiUsd;
     }
 
     public String getTokenSandbox() {
         return tokenSandbox;
     }
 
-    public void setTokenSandbox(String tokenSandbox) {
-        this.tokenSandbox = tokenSandbox;
-    }
-
     public String getTokenReal() {
         return tokenReal;
-    }
-
-    public void setTokenReal(String tokenReal) {
-        this.tokenReal = tokenReal;
     }
 
     public List<String> getFindBuyTickers() {
@@ -80,5 +75,13 @@ public class ApplicationProperties {
 
     public int getSharesMaxCount() {
         return sharesMaxCount;
+    }
+
+    public BigDecimal getShareMaxPriceUsd() {
+        return shareMaxPriceUsd;
+    }
+
+    public BigDecimal getShareMaxPriceRub() {
+        return shareMaxPriceRub;
     }
 }

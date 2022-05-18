@@ -59,6 +59,16 @@ public class SharesService {
         return findTickerByFigi(figi).await().indefinitely();
     }
 
+    @CacheResult(cacheName = "share-by-figi-cache")
+    public Uni<Share> findShareByFigi(String figi) {
+        return getShares()
+                .onItem()
+                .transform(shares -> shares.stream()
+                        .filter(sh -> figi.equals(sh.getFigi()))
+                        .findFirst()
+                        .orElse(null));
+    }
+
     @CacheResult(cacheName = "ticker-by-figi-cache")
     public Uni<String> findTickerByFigi(String figi) {
         return getShares()
