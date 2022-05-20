@@ -70,8 +70,10 @@ public class SpreadStrategy implements Strategy {
         // подписываемся на сделки
         if (!properties.isSandboxMode()) {
             orderbookService.subscribeTradesStream((orderTrades) -> {
-                // todo? оно надо?
-                log.info(">>> Новые данные по заявке !!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                String orderId = orderTrades.getOrderId();
+                String figiOrder = orderTrades.getFigi();
+                OrderDirection direction = orderTrades.getDirection();
+                eventLogger.logOrderDone(orderId, figiOrder, direction);
             });
         }
 
@@ -80,8 +82,8 @@ public class SpreadStrategy implements Strategy {
         postFirstOrders(figi)
                 .subscribe()
                 .with((t) -> {
+                    eventLogger.log("Подписываемся на стакан.", figi);
                     orderbookService.subscribeOrderBook(figi, (orderBook) -> {
-                        eventLogger.log("Подписываемся на стакан.", figi);
                         processOrderbook(orderBook);
                     });
                 });
@@ -93,8 +95,8 @@ public class SpreadStrategy implements Strategy {
     @Override
     public Uni<Void> stopListening(List<String> figiUnsucscribe) {
         if (figiUnsucscribe != null && !figiUnsucscribe.isEmpty()) {
-            eventLogger.log("Отписываемся от стаканов", figiUnsucscribe);
             orderbookService.unsucscribeOrderbook(figiUnsucscribe);
+            eventLogger.log("Отписываемся от стаканов", figiUnsucscribe);
         }
         return Uni.createFrom().voidItem();
     }

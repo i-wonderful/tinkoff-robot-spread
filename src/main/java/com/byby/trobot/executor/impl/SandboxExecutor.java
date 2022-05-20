@@ -21,16 +21,17 @@ import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import static com.byby.trobot.executor.impl.Helper.*;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 
 /**
  * Операции с песочницей
  */
+
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "true")
 @ApplicationScoped
 public class SandboxExecutor implements Executor, SandboxAccountService {
@@ -60,8 +61,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         Uni.createFrom()
                 .completionStage(sandboxService.getAccounts())
                 .onItem()
-                .transformToUni(accounts ->
-                        findOpenAccountId(accounts)
+                .transformToUni(accounts -> findOpenAccountId(accounts)
                                 .map(accountId -> Uni.createFrom().item(accountId))
                                 .orElseGet(this::createNewAccount))
                 .subscribe()
@@ -71,7 +71,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
                 });
     }
 
-    public Uni<String> getAccountId() {
+    public Uni<String> loadAccountId() {
         if (accountId == null) {
             Uni<String> accountIdUni = Uni.createFrom()
                     .completionStage(sandboxService.getAccounts())
@@ -90,12 +90,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         return Uni.createFrom().item(accountId);
     }
 
-    private Optional<String> findOpenAccountId(List<Account> accounts) {
-        return accounts.stream()
-                .filter(account -> AccountStatus.ACCOUNT_STATUS_OPEN.equals(account.getStatus()))
-                .findFirst()
-                .map(Account::getId);
-    }
+
 
     /**
      * Выставить лимитную заявку на покупку.
@@ -189,7 +184,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
 
     @Override
     public Uni<PortfolioDto> getPortfolio() {
-        return getAccountId()
+        return loadAccountId()
                 .onItem()
                 .transformToUni(accountId ->
                         getPortfolio(accountId)
@@ -205,7 +200,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     @Override
     public Uni<List<OrderState>> getMyOrders() {
         log.info(">>> API Call: sandboxService.getOrders(...)");
-        return getAccountId()
+        return loadAccountId()
                 .onItem()
                 .transformToUni(accountId -> Uni.createFrom()
                         .completionStage(sandboxService.getOrders(accountId)));

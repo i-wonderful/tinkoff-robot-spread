@@ -1,6 +1,7 @@
 package com.byby.trobot.service.impl;
 
 
+import com.byby.trobot.controller.exception.ApiCallException;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.quarkus.cache.CacheResult;
 import io.smallrye.mutiny.Uni;
@@ -34,8 +35,8 @@ public class OrderbookService {
 
     public OrderbookService(InvestApi api) {
         this.marketDataStreamService = api.getMarketDataStreamService();
-        this.marketDataService =  api.getMarketDataService();
-//        this.ordersStreamService = api.getOrdersStreamService();
+        this.marketDataService = api.getMarketDataService();
+        this.ordersStreamService = api.getOrdersStreamService();
     }
 
     /**
@@ -88,16 +89,20 @@ public class OrderbookService {
                 log.info("TradesStream пинг сообщение");
             } else if (response.hasOrderTrades()) {
                 OrderTrades ot = response.getOrderTrades();
+                log.info(">>> TradesStream  Order complete: " + ot.getOrderId());
                 log.info("TradesStream Новые данные по сделкам: {}", response);
                 listener.accept(ot);
             }
         };
 
         // todo
-        Consumer<Throwable> onErrorCallback = error -> log.error(error.toString());
+        Consumer<Throwable> onErrorCallback = error -> {
+            throw new ApiCallException(error.getMessage(), error, "ordersStreamService.subscribeTrades");
+        }
+                //log.error(error.toString())
+                ;
 
         //Подписка стрим сделок. Не блокирующий вызов
-        //При необходимости обработки ошибок (реконнект по вине сервера или клиента), рекомендуется сделать onErrorCallback
         ordersStreamService.subscribeTrades(consumer, onErrorCallback);
     }
 

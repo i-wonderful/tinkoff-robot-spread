@@ -9,7 +9,6 @@ import ru.tinkoff.piapi.contract.v1.Share;
 import ru.tinkoff.piapi.core.InstrumentsService;
 import ru.tinkoff.piapi.core.InvestApi;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Singleton;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -80,8 +79,9 @@ public class SharesService {
                         .orElse(null));
     }
 
+    @Deprecated
     @CacheResult(cacheName = "name-by-figi-cache")
-    public String findNameByFigi(String figi) {
+    public String findNameByFigiSync(String figi) {
         log.info(">>> findNameByFigi " + figi);
         return getSharesSync().stream()
                 .filter(sh -> figi.equals(sh.getFigi()))
@@ -90,8 +90,26 @@ public class SharesService {
                 .orElse(null);
     }
 
+    /**
+     * Найти список figi акций по их тикерам.
+     *
+     * @param tickers
+     * @return
+     */
     @CacheResult(cacheName = "shares-by-ticker-cache")
-    public List<Share> findByTicker(List<String> tickers) {
+    public Uni<List<String>> findByTicker(List<String> tickers) {
+        return getShares()
+                .onItem()
+                .transform(shares -> shares.stream()
+                        .filter(share -> tickers.contains(share.getTicker()))
+                        .map(Share::getFigi)
+                        .collect(Collectors.toList())
+               );
+    }
+
+    @Deprecated
+    @CacheResult(cacheName = "shares-by-ticker-cache-sync")
+    public List<Share> findByTickerSync(List<String> tickers) {
         return getSharesSync()
                 .stream()
                 .filter(share -> tickers.contains(share.getTicker()))

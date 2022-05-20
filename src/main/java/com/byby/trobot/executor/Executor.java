@@ -62,4 +62,6 @@ public interface Executor {
      * @return
      */
     boolean isMySellOrderOptimal(OrderState myOrderSell, Order askFromOrderbook);
+
+    Uni<String> loadAccountId();
 }

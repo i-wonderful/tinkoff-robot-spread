@@ -11,12 +11,16 @@ import ru.tinkoff.piapi.contract.v1.MoneyValue;
 import ru.tinkoff.piapi.contract.v1.PortfolioPosition;
 import ru.tinkoff.piapi.contract.v1.PortfolioResponse;
 import ru.tinkoff.piapi.contract.v1.Quotation;
+import ru.tinkoff.piapi.core.models.Money;
+import ru.tinkoff.piapi.core.models.Portfolio;
+import ru.tinkoff.piapi.core.models.Position;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import static java.util.Optional.ofNullable;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
@@ -26,14 +30,15 @@ public class PortfolioMapper {
     private static final Logger log = LoggerFactory.getLogger(PortfolioMapper.class);
 
     @Inject
-    SharesService sharesService;
+    PositionMapper positionMapper;
 
-    @ConfigProperty(name = "tinkoff.figi.usd")
-    String tinkoffFigiUsd;
-
-    @ConfigProperty(name = "tinkoff.figi.rub")
-    String tinkoffFigiRub;
-
+    /**
+     * Sandbox mapping
+     *
+     * @param portfolio
+     * @param accountId
+     * @return
+     */
     public PortfolioDto toDto(PortfolioResponse portfolio, String accountId) {
 
         PortfolioDto dto = new PortfolioDto(true, accountId);
@@ -51,48 +56,52 @@ public class PortfolioMapper {
 
         var positions = portfolio.getPositionsList();
         log.info("в портфолио {} позиций", positions.size());
-        for (int i = 0; i < positions.size(); i++) {
-            PortfolioPosition position = positions.get(i);
-            if (tinkoffFigiUsd.equals(position.getFigi())) {
-                dto.setBalanceUsd(quotationToBigDecimal(position.getQuantity()));
-            } else if (tinkoffFigiRub.equals(position.getFigi())){
-                dto.setBalanceRub(quotationToBigDecimal(position.getQuantity()));
-            } else {
-                dto.addPosition(toDto(position));
-            }
-        }
+        positionMapper.updateDto(portfolio, dto);
 
         return dto;
     }
 
-    private  PortfolioPositionDto toDto(PortfolioPosition value) {
-        if (value == null) {
-            return null;
-        }
 
-        PortfolioPositionDto dto = new PortfolioPositionDto();
-        dto.setFigi(value.getFigi());
-        dto.setTicker(sharesService.findTickerByFigiSync(value.getFigi()));
-        dto.setName(sharesService.findNameByFigi(value.getFigi()));
-        dto.setAveragePrice(moneyValueToBigDecimal(value.getAveragePositionPrice()));
-        dto.setCurrency(value.getAveragePositionPrice().getCurrency());
-        dto.setQuantity(value.getQuantity().getUnits());
-        dto.setExpectedYield(quotationToBigDecimal(value.getExpectedYield()));
+    /**
+     * Real mapping
+     *
+     * @param portfolio
+     * @param accountId
+     * @return
+     */
+    public PortfolioDto toDto(Portfolio portfolio, String accountId) {
+        PortfolioDto dto = new PortfolioDto(false, accountId);
+
+        var totalAmountCurrencies = portfolio.getTotalAmountCurrencies();
+        dto.setTotalAmountCurrencies(totalAmountCurrencies.getValue());
+        log.info("общая стоимость валют в портфеле {}", totalAmountCurrencies);
+
+        var totalAmountShares = portfolio.getTotalAmountShares();
+        dto.setTotalAmountShares(toDto(totalAmountShares));
+        log.info("общая стоимость акций в портфеле {}", totalAmountShares);
+
+        dto.setExpectedYeld(portfolio.getExpectedYield());
+        log.info("текущая доходность портфеля {}", portfolio.getExpectedYield());
+
+        var positions = portfolio.getPositions();
+        log.info("в портфолио {} позиций", positions.size());
+        positionMapper.updateDto(portfolio, dto);
 
         return dto;
     }
 
-    private List<PortfolioPositionDto> toDto(List<PortfolioPosition> values) {
-        return ofNullable(values).orElseGet(Collections::emptyList)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
-    }
 
     private MoneyDto toDto(MoneyValue value) {
         MoneyDto dto = new MoneyDto();
         dto.setCurrency(value.getCurrency());
         dto.setValue(moneyValueToBigDecimal(value));
+        return dto;
+    }
+
+    private MoneyDto toDto(Money money) {
+        MoneyDto dto = new MoneyDto();
+        dto.setCurrency(money.getCurrency() != null ? money.getCurrency().getDisplayName() : "");
+        dto.setValue(money.getValue());
         return dto;
     }
 

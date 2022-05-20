@@ -2,7 +2,9 @@ package com.byby.trobot.controller;
 
 import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.executor.impl.RealExecutor;
 import com.byby.trobot.service.impl.*;
 import com.byby.trobot.strategy.impl.SpreadFindFigiService;
 import com.byby.trobot.strategy.impl.SpreadStrategy;
@@ -20,6 +22,7 @@ import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -47,6 +50,8 @@ public class VertxController {
 
     @Inject
     OrderbookService orderbookService;
+
+    //OrderbookStreamS
     @Inject
     StrategyManagerImpl strategyManager;
     @Inject
@@ -61,6 +66,12 @@ public class VertxController {
     @Inject
     AppCache appCache;
 
+    @Inject
+    RealExecutor realExecutor;
+
+    @Inject
+    StrategySharesProperties strategySharesProperties;
+
 
     //BBG004S68BR5
     @GET
@@ -73,7 +84,7 @@ public class VertxController {
     @GET
     @Path("/ticker")
     public Uni<String> getTickerByFigi() {
-        sharesService.findByTicker(List.of("NMTP"));
+        sharesService.findByTickerSync(List.of("NMTP"));
         return sharesService.findTickerByFigi("BBG004S68BR5");
     }
 
@@ -102,12 +113,12 @@ public class VertxController {
                 .transformToUni(orderbook -> spreadService.calcSpread(orderbook));
     }
 
-    @GET
-    @Path("/figi")
-    public Uni<List<String>> getFigi() {
-        log.info(">>> Find figi start");
-        return strategyManager.runFindFigi();
-    }
+//    @GET
+//    @Path("/figi")
+//    public Uni<List<String>> getFigi() {
+//        log.info(">>> Find figi start");
+//        return strategyManager.runFindFigi();
+//    }
 
     @GET
     @Path("/cache-get")
@@ -132,10 +143,10 @@ public class VertxController {
     // figi='BBG000BXQ7R1', ticker='ZNH'
     //figi='BBG00W9LF2G5', ticker='PRAX'
     @Path("/process")
-    public void processOrderbook() {
-        orderbookService.getOrderbook("BBG00W9LF2G5", 5)
-                .subscribe()
-                .with(orderbook -> strategy.processOrderbook(orderbook));
+    public  Uni processOrderbook() {
+        return orderbookService.getOrderbook("BBG000BXQ7R1", 1)
+                .onItem()
+                .call(orderbook -> strategy.processOrderbook(orderbook));
     }
 
     @GET
@@ -186,6 +197,19 @@ public class VertxController {
         });
     }
 
+    @GET
+    @Path("/is-has-position")
+    public Uni testHasPosition(){
+        return realExecutor.hasPosition("BBG000BXQ7R1");
+    }
+
+
+    @GET
+    @Path("/exclude-tickers")
+    public List<String> excludeTickers(){
+        return strategySharesProperties.tickersExclude().orElse(Collections.emptyList());
+    }
+
 //    @GET
 //    @Path("/get-order-pair")
 //    public RestResponse getMyCurrentOpenOrders() {
@@ -204,5 +228,7 @@ public class VertxController {
 //        orderStates.add(os3);
 //        return RestResponse.ok(Helper.getOrderPair(orderStates).getBuy().getInitialSecurityPrice().getUnits());
 //    }
+
+
 
 }

@@ -2,21 +2,18 @@ package com.byby.trobot.service.impl;
 
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.common.GlobalBusAddress;
-import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.Strategy;
 import com.byby.trobot.cache.StrategyCacheManager;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
 import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.contract.v1.Share;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
@@ -45,8 +42,8 @@ public class StrategyManagerImpl implements StrategyManager {
     StrategyCacheManager cacheManager;
 
     @Inject
-    ApplicationProperties properties;
-
+    StrategySharesProperties strategySharesProperties;
+    
     @Inject
     SharesService sharesService;
 
@@ -62,29 +59,31 @@ public class StrategyManagerImpl implements StrategyManager {
             return Uni.createFrom().voidItem();
         }
         eventLogger.log("Поехали!");
-        return runFindFigi()
-                .invoke(() -> {
+        return startFindFigi()
+                .onItem()
+                .call(() -> {
                     this.isRun = true;
                     this.isAllFigiFind = false;
-                })
-                .replaceWithVoid();
+                    return Uni.createFrom().voidItem();
+                });
     }
 
 
+    /**
+     *
+     * @return
+     */
     @Override
     public Uni<Void> stop() {
-        if (!this.isRun) {
-            eventLogger.log("Не запущен");
-            return Uni.createFrom().voidItem();
-        }
+        this.isRun = false;
+        this.isAllFigiFind = false;
 
         return cacheManager.getFigi()
                 .call(figi -> strategy.stopListening(figi))
                 .call(() -> cacheManager.clear())
-                .call(() -> eventLogger.log("Остановлен."))
                 .invoke(() -> {
-                    this.isRun = false;
-                    this.isAllFigiFind = false;
+                    findFigiService.stopTimers();
+                    eventLogger.log("Остановлен.");
                 })
                 .replaceWithVoid();
     }
@@ -104,17 +103,20 @@ public class StrategyManagerImpl implements StrategyManager {
      * Если указан параметр в настройках robot.strategy.find.buy.tickers, то берем их.
      * Если не указан, то ищем согласно условиям отбора стратегии.
      *
-     * @return список figi
+     * @return
      */
-    public Uni<List<String>> runFindFigi() {
-        List<String> figi = figiFromProperties();
-        if (figi == null || figi.isEmpty()) {
-            return findFigiService.findFigi();
-        } else {
-            eventLogger.log("Отслеживаем акции из настроек", figi);
-            bus.send(GlobalBusAddress.NEW_FIGI, figi.stream().collect(Collectors.joining(",")));
-            return Uni.createFrom().item(figi);
-        }
+    public Uni<Void> startFindFigi() {
+        return figiFromProperties()
+                .call(figi -> {
+                    if (figi == null || figi.isEmpty()) {
+                        return findFigiService.startFindFigi();
+                    } else {
+                        bus.send(GlobalBusAddress.NEW_FIGI, figi.stream().collect(Collectors.joining(",")));
+                        eventLogger.log("Отслеживаем акции из настроек", figi);
+                        return Uni.createFrom().voidItem();
+                    }
+                })
+                .replaceWithVoid();
     }
 
     /**
@@ -123,20 +125,18 @@ public class StrategyManagerImpl implements StrategyManager {
      *
      * @return список figi
      */
-    private List<String> figiFromProperties() {
-        List<String> tickers = properties.getFindBuyTickers();
-        if (tickers == null || tickers.isEmpty()) {
-            return Collections.emptyList();
+    private Uni<List<String>> figiFromProperties() {
+        List<String> tickers = strategySharesProperties.tickersFind().orElse(Collections.emptyList());
+        if (tickers.isEmpty()) {
+            return Uni.createFrom().item(Collections.emptyList());
         }
         eventLogger.log(String.format("Будем торговать акциями из настроек tickers=%s", tickers));
-        return sharesService.findByTicker(tickers).stream()
-                .map(Share::getFigi)
-                .collect(Collectors.toList());
+        return sharesService.findByTicker(tickers);
     }
 
     /**
      * Обработчик события: Найдены новые подходящие акции.
-     *
+     * <p>
      * Оперирует с новым найденными и уже имеющимися акциями.
      * Сохраняет в кеше.
      * Запускаем стратегию.
@@ -154,7 +154,7 @@ public class StrategyManagerImpl implements StrategyManager {
         }
 
         if (newFigi.isEmpty()) {
-            eventLogger.log("Пока не нашли продходящие акции. Ждем поиск следующих по таймеру.");
+            eventLogger.log("Пока не нашли продходящие акции. Ждем поиск следующих по таймеру через минуту.");
             return;
         }
 
@@ -167,11 +167,12 @@ public class StrategyManagerImpl implements StrategyManager {
                 .call((oldFigi) -> strategy.stopListening(oldFigi))
                 .onItem()
                 .transform(oldFigi -> {
+                    int maxCount = strategySharesProperties.maxCount();
                     List<String> allAddToCache = Streams.concat(oldFigi.stream(), newFigi.stream())
-                            .limit(properties.getSharesMaxCount())
+                            .limit(maxCount)
                             .collect(Collectors.toList());
-                    if (allAddToCache.size() == properties.getSharesMaxCount()) {
-                        eventLogger.log("Найдено нужное количество акций " + properties.getSharesMaxCount());
+                    if (allAddToCache.size() == maxCount) {
+                        eventLogger.log("Найдено нужное количество акций " + maxCount);
                         this.isAllFigiFind = true;
                         findFigiService.stopTimers();
                     }

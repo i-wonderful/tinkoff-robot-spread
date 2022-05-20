@@ -6,11 +6,12 @@ export default {
     },
     data() {
         return {
+            eventBus: {},
             isRun: false,
+            exchanges: [],
             logs: [],
             logOrders: [],
-            eventBus: {},
-            exchanges: []
+            errors: []
         }
     },
     methods: {
@@ -87,6 +88,9 @@ export default {
                     console.warn("Not found uiAction");
                 }
             });
+            this.eventBus.registerHandler('LOG_ERROR', (error, message) => {
+               this.errors.push(message.body);
+            });
         }
 
         axios.get("/account/exchanges")
@@ -152,6 +156,13 @@ export default {
         <div class="log-panel">
             <div v-for="(log, index) in logs" >
                 {{logs[index]}}
+            </div>
+        </div>
+        
+        <br/>
+        <div class="log-errors-panel">
+            <div v-for="(err, index) in errors" >
+                {{err[index]}}
             </div>
         </div>
         

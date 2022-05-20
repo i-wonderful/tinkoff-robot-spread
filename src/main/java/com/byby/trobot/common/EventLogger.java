@@ -9,6 +9,7 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static ru.tinkoff.piapi.contract.v1.OrderDirection.*;
 
 import ru.tinkoff.piapi.contract.v1.OrderDirection;
@@ -29,9 +30,10 @@ import static com.byby.trobot.common.GlobalBusAddress.LOG_ORDER;
 @ApplicationScoped
 public class EventLogger {
     private static final Logger log = LoggerFactory.getLogger(EventLogger.class);
-    private static final String TEMPLATE_ADD_ORDER_BUY = "[%s] Выставлена лимитная заявка на покупку по цене %f, orderId=%s";
-    private static final String TEMPLATE_ADD_ORDER_SELL = "[%s] Выставлена лимитная заявка на продажу по цене %f, orderId=%s";
-    private static final String TEMPLATE_CANCEL_ORDER = "[%s] Отменена заявка на %s. orderId=%s";
+    private static final String TEMPLATE_ORDER_ADD_BUY = "[%s] Выставлена лимитная заявка на покупку по цене %f, orderId=%s";
+    private static final String TEMPLATE_ORDER_ADD_SELL = "[%s] Выставлена лимитная заявка на продажу по цене %f, orderId=%s";
+    private static final String TEMPLATE_ORDER_CANCEL = "[%s] Отменена заявка на %s. orderId=%s";
+    private static final String TEMPLATE_ORDER_DONE = "[%s] Заявка исполнена. orderId=%s";
 
     @Inject
     SharesService sharesService;
@@ -48,68 +50,82 @@ public class EventLogger {
      * @param message
      * @return
      */
-    public Uni log(String message) {
+    public void log(String message) {
         log.info(message);
         bus.publish(LOG, message);
-        return Uni.createFrom().voidItem();
     }
 
     /**
-     * Лог сообщения, с выводом тикера акции
+     * Лог сообщения, с выводом тикера акции.
      *
      * @param message
      * @param figi
      * @return
      */
-    public Uni log(String message, String figi) {
-        String ticker = sharesService.findTickerByFigiSync(figi);
-        log.info("[" + ticker + "] " + message + ", figi: " + figi);
-        bus.publish(LOG, "[" + ticker + "] " + message);
-        return Uni.createFrom().voidItem();
+    public void log(String message, String figi) {
+        sharesService.findTickerByFigi(figi)
+                .subscribe()
+                .with(ticker -> {
+                    log.info("[" + ticker + "] " + message + ", figi: " + figi);
+                    bus.publish(LOG, "[" + ticker + "] " + message);
+                });
     }
 
     /**
-     * Логи сообщения с выводом списка тикеров акций
+     * Логирование сообщения с выводом списка тикеров акций.
      *
      * @param message
      * @param figis
      * @return
      */
-    public Uni log(String message, List<String> figis) {
-        String tickers = figis.stream()
-                .map(figi -> sharesService.findTickerByFigiSync(figi))
-                .collect(Collectors.joining(","));
-        log.info("[" + tickers + "] " + message);
-        bus.publish(LOG, "[" + tickers + "] " + message);
-        return Uni.createFrom().voidItem();
+    public void log(String message, List<String> figis) {
+//        System.out.println(" >>>L>>>1 " + message + " " + figis);
+        List<Uni<String>> tickerUnis = figis.stream()
+                .map(figi -> sharesService.findTickerByFigi(figi))
+                .collect(Collectors.toList());
+
+        Uni.join().all(tickerUnis).andCollectFailures()
+                .subscribe()
+                .with(tickers -> {
+                    log.info(tickers + " " + message);
+                    bus.publish(LOG,  tickers + " " + message);
+                });
     }
 
 
     /**
      * Оправить в eventBus саму заявку для вывода в ui
      */
-    public Uni uiOrderList(OrderStateDto dto) {
+    private void uiOrderList(OrderStateDto dto) {
         bus.publish(LOG_ORDER, dto, new DeliveryOptions().setCodecName(OrderStateDtoCodec.NAME));
-        return Uni.createFrom().voidItem();
+    }
+
+    private void uiOrderListRemove(String orderId) {
+        OrderStateDto dto = new OrderStateDto();
+        dto.setOrderId(orderId);
+        dto.setUiAction("REMOVE");
+        uiOrderList(dto);
     }
 
     /**
      * Лог: добавление новой заявки.
      */
-    public Uni logPostOrder(PostOrderResponse response) {
+    public void logPostOrder(PostOrderResponse response) {
+        if (response == null) {
+            return;
+        }
         OrderStateDto dto = orderMapper.toDto(response);
         dto.setUiAction("ADD");
         uiOrderList(dto);
 
         String template = "%s %f %s";
-        if(response.getDirection().equals(ORDER_DIRECTION_BUY)) {
-            template = TEMPLATE_ADD_ORDER_BUY;
+        if (response.getDirection().equals(ORDER_DIRECTION_BUY)) {
+            template = TEMPLATE_ORDER_ADD_BUY;
         } else if (response.getDirection().equals(ORDER_DIRECTION_SELL)) {
-            template = TEMPLATE_ADD_ORDER_SELL;
+            template = TEMPLATE_ORDER_ADD_SELL;
         }
         String messageLog = String.format(template, dto.getTicker(), dto.getInitialPrice(), dto.getOrderId());
         bus.publish(LOG, messageLog);
-        return Uni.createFrom().voidItem();
     }
 
     /**
@@ -120,25 +136,41 @@ public class EventLogger {
      * @param orderDirection
      * @return
      */
-    public Uni logOrderCancel(String orderId, String figi, OrderDirection orderDirection) {
-        String ticker = sharesService.findTickerByFigiSync(figi);
-        String message = String.format(TEMPLATE_CANCEL_ORDER, ticker, OrderMapper.getDirectionRus(orderDirection), orderId);
-
-        // вывод текстовых сообщений о событии
-        bus.publish(LOG, message);
-        log.info(message);
-
-        // убрать из таблицы ордеров в ui
-        OrderStateDto dto = new OrderStateDto();
-        dto.setOrderId(orderId);
-        dto.setUiAction("REMOVE");
-        uiOrderList(dto);
-
-        return Uni.createFrom().voidItem();
+    public void logOrderCancel(String orderId, String figi, OrderDirection orderDirection) {
+        logOrderAndUiRemove(TEMPLATE_ORDER_CANCEL, orderId, figi, orderDirection);
     }
 
-    public void logError(Exception exception) {
+    /**
+     * Лог: заявка исполнена.
+     *
+     * @param orderId
+     * @param figi
+     * @param orderDirection
+     * @return
+     */
+    public void logOrderDone(String orderId, String figi, OrderDirection orderDirection) {
+        logOrderAndUiRemove(TEMPLATE_ORDER_DONE, orderId, figi, orderDirection);
+    }
+
+    /**
+     * Вывод в лог и удалить удалить ордер из таблицы в ui.
+     */
+    private void logOrderAndUiRemove(String template, String orderId, String figi, OrderDirection orderDirection) {
+        sharesService.findTickerByFigi(figi)
+                .subscribe()
+                .with(ticker -> {
+                    String message = String.format(template, ticker, OrderMapper.getDirectionRus(orderDirection), orderId);
+                    // вывод текстовых сообщений о событии
+                    bus.publish(LOG, message);
+                    log.info(message);
+
+                    // убрать из таблицы ордеров в ui
+                    uiOrderListRemove(orderId);
+                });
+    }
+
+    public void logError(Throwable exception) {
         log.error(">>> !!!!!!!!!!!!!!!!!!!!!!", exception);
-        bus.publish(GlobalBusAddress.LOG, ">>> Exception " + exception.getMessage());
+        bus.publish(GlobalBusAddress.LOG_ERR, ">>> Exception " + exception.getMessage());
     }
 }

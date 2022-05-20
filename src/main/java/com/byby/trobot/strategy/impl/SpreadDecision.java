@@ -1,16 +1,19 @@
 package com.byby.trobot.strategy.impl;
 
 import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.strategy.impl.model.Spread;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import java.math.BigDecimal;
+import java.util.Optional;
 
 @ApplicationScoped
 public class SpreadDecision {
 
     @Inject
-    ApplicationProperties properties;
+    StrategySharesProperties properties;
 
     /**
      * Принять решение: подходящий ли спред.
@@ -21,12 +24,19 @@ public class SpreadDecision {
     public boolean isAppropriate(Spread spread) {
         boolean isPriceOk = true;
         if ("usd".equalsIgnoreCase(spread.getCurrency())) {
-            isPriceOk = spread.getNextAskPrice().compareTo(properties.getShareMaxPriceUsd()) <= 0;
+            isPriceOk = priceOk(properties.priceMaxUsd(), spread.getNextAskPrice() );
         } else if ("rub".equalsIgnoreCase(spread.getCurrency())) {
-            isPriceOk = spread.getNextAskPrice().compareTo(properties.getShareMaxPriceRub()) <= 0;
+            isPriceOk = priceOk(properties.priceMaxRub(), spread.getNextAskPrice() );
         }
-        boolean isSpreadOk = properties.getRobotSpreadPercent() <= spread.getPercent();
+        boolean isSpreadOk = properties.spreadPercent() <= spread.getPercent();
 
         return isPriceOk && isSpreadOk;
+    }
+
+    private boolean priceOk(Optional<BigDecimal> maxPrice, BigDecimal price) {
+        if (maxPrice.isPresent()) {
+            return price.compareTo(maxPrice.get()) <= 0;
+        }
+        return true;
     }
 }

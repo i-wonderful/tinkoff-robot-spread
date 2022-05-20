@@ -61,6 +61,9 @@ public class OrderMapper {
     }
 
     public OrderStateDto toDto(PostOrderResponse order) {
+        if (order == null) {
+            return null;
+        }
         OrderStateDto dto = new OrderStateDto();
         dto.setOrderId(order.getOrderId());
         dto.setStatus(getStatus(order.getExecutionReportStatus()));
