@@ -55,7 +55,7 @@ public class OrderbookService {
 //                log.info("новый данные по стакану " + response.getOrderbook());
                 listener.accept(response.getOrderbook());
             } else if (response.hasTrade()) {
-                log.info("Новые данные по сделкам: {}", response);
+                log.info("Новые данные по сделкам !!! из marketDataStreamService: {}", response);
             } else if (response.hasSubscribeOrderBookResponse()) {
                 var successCount = response.getSubscribeOrderBookResponse().getOrderBookSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
                 var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
@@ -70,9 +70,9 @@ public class OrderbookService {
                 .newStream(ORDERBOOK_STREAM_NAME, processor, onErrorCallback)
                 .subscribeOrderbook(figi, 1);
 
-//        api.getMarketDataStreamService()
-//                .newStream("trades_stream", processor, onErrorCallback)
-//                .subscribeTrades(figi);
+        marketDataStreamService // todo проверить!!!!
+                .newStream("trades_stream", processor, onErrorCallback)
+                .subscribeTrades(figi);
 //
 //        api.getMarketDataStreamService()
 //                .newStream("last_prices_stream", processor, onErrorCallback)
@@ -98,9 +98,7 @@ public class OrderbookService {
         // todo
         Consumer<Throwable> onErrorCallback = error -> {
             throw new ApiCallException(error.getMessage(), error, "ordersStreamService.subscribeTrades");
-        }
-                //log.error(error.toString())
-                ;
+        };
 
         //Подписка стрим сделок. Не блокирующий вызов
         ordersStreamService.subscribeTrades(consumer, onErrorCallback);

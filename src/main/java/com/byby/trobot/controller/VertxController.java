@@ -3,6 +3,8 @@ package com.byby.trobot.controller;
 import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.config.StrategySharesProperties;
+import com.byby.trobot.db.entity.OrderDone;
+import com.byby.trobot.db.service.DbService;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.executor.impl.RealExecutor;
 import com.byby.trobot.service.impl.*;
@@ -10,11 +12,13 @@ import com.byby.trobot.strategy.impl.SpreadFindFigiService;
 import com.byby.trobot.strategy.impl.SpreadStrategy;
 import com.byby.trobot.cache.StrategyCacheManager;
 import com.byby.trobot.strategy.impl.model.Spread;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.piapi.contract.v1.OrderTradeOrBuilder;
 import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.inject.Instance;
@@ -72,6 +76,9 @@ public class VertxController {
     @Inject
     StrategySharesProperties strategySharesProperties;
 
+    @Inject
+    DbService dbService;
+
 
     //BBG004S68BR5
     @GET
@@ -122,7 +129,7 @@ public class VertxController {
 
     @GET
     @Path("/cache-get")
-    public List<String> getFromCache(){
+    public List<String> getFromCache() {
         log.info(">>> GetFromCache getFigiSync");
         return cacheManager.getFigiSync();
     }
@@ -143,7 +150,7 @@ public class VertxController {
     // figi='BBG000BXQ7R1', ticker='ZNH'
     //figi='BBG00W9LF2G5', ticker='PRAX'
     @Path("/process")
-    public  Uni processOrderbook() {
+    public Uni processOrderbook() {
         return orderbookService.getOrderbook("BBG000BXQ7R1", 1)
                 .onItem()
                 .call(orderbook -> strategy.processOrderbook(orderbook));
@@ -199,15 +206,21 @@ public class VertxController {
 
     @GET
     @Path("/is-has-position")
-    public Uni testHasPosition(){
+    public Uni testHasPosition() {
         return realExecutor.hasPosition("BBG000BXQ7R1");
     }
 
 
     @GET
     @Path("/exclude-tickers")
-    public List<String> excludeTickers(){
+    public List<String> excludeTickers() {
         return strategySharesProperties.tickersExclude().orElse(Collections.emptyList());
+    }
+
+    @GET
+    @Path("/get-db")
+    public Uni saveDb() {
+        return dbService.save2();
     }
 
 //    @GET
@@ -228,7 +241,6 @@ public class VertxController {
 //        orderStates.add(os3);
 //        return RestResponse.ok(Helper.getOrderPair(orderStates).getBuy().getInitialSecurityPrice().getUnits());
 //    }
-
 
 
 }

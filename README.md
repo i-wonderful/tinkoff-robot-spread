@@ -1,5 +1,12 @@
 # tinkof-robot Project
 
+
+```
+docker run -it --rm=true \
+    --name postgres-quarkus -e POSTGRES_USER=quarkus \
+    -e POSTGRES_PASSWORD=quarkus -e POSTGRES_DB=trobot \
+    -p 5432:5432 postgres:14.1
+```
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .

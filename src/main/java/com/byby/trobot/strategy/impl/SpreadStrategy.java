@@ -2,6 +2,7 @@ package com.byby.trobot.strategy.impl;
 
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.db.service.DbService;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.impl.OrderbookService;
 import com.byby.trobot.service.impl.SpreadService;
@@ -57,6 +58,9 @@ public class SpreadStrategy implements Strategy {
     @Inject
     SpreadDecision spreadDecision;
 
+    @Inject
+    DbService dbService;
+
 
     @Override
     public void start(List<String> figi) {
@@ -73,7 +77,9 @@ public class SpreadStrategy implements Strategy {
                 String orderId = orderTrades.getOrderId();
                 String figiOrder = orderTrades.getFigi();
                 OrderDirection direction = orderTrades.getDirection();
-                eventLogger.logOrderDone(orderId, figiOrder, direction);
+                dbService.save(orderTrades)
+                        .onItem()
+                        .invoke(() -> eventLogger.logOrderDone(orderId, figiOrder, direction));
             });
         }
 
@@ -97,6 +103,8 @@ public class SpreadStrategy implements Strategy {
         if (figiUnsucscribe != null && !figiUnsucscribe.isEmpty()) {
             orderbookService.unsucscribeOrderbook(figiUnsucscribe);
             eventLogger.log("Отписываемся от стаканов", figiUnsucscribe);
+
+            // todo отписать от стрима сделок
         }
         return Uni.createFrom().voidItem();
     }
