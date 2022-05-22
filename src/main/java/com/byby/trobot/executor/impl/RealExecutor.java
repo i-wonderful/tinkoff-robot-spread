@@ -1,15 +1,15 @@
 package com.byby.trobot.executor.impl;
 
+import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.AppProperties;
-import com.byby.trobot.controller.exception.UserDataException;
+import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.controller.handler.ExceptionHandler;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.unchecked.Unchecked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
@@ -33,7 +33,7 @@ import static com.byby.trobot.executor.impl.Helper.*;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 
 /**
- * Работа с реальным счетом
+ * Операции с реальным счетом
  */
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "false")
 @ApplicationScoped
@@ -50,11 +50,11 @@ public class RealExecutor implements Executor {
     private EventLogger eventLogger;
     private AppProperties appProperties;
     private ExceptionHandler exceptionHandler;
-
+    private AppCache appCache;
     private String accountId;
 
-    public RealExecutor(InvestApi api, EventLogger eventLogger, PortfolioMapper portfolioMapper, AppProperties appProperties, ExceptionHandler exceptionHandler) {
-        log.info(">>> Init Real Executor");
+    public RealExecutor(InvestApi api, EventLogger eventLogger, PortfolioMapper portfolioMapper, AppProperties appProperties, ExceptionHandler exceptionHandler, AppCache appCache) {
+        log.info(">>> Init RealExecutor");
         this.usersService = api.getUserService();
         this.operationsService = api.getOperationsService();
         this.eventLogger = eventLogger;
@@ -63,28 +63,25 @@ public class RealExecutor implements Executor {
         this.ordersService = api.getOrdersService();
         this.ordersStreamService = api.getOrdersStreamService();
         this.exceptionHandler = exceptionHandler;
+        this.appCache = appCache;
     }
 
+    @Override
     public Uni<String> loadAccountId() {
         if (accountId != null) {
             return Uni.createFrom().item(accountId);
         }
-        Uni<String> accountIdUni =
-                Uni.createFrom()
-                        .completionStage(usersService.getAccounts())
-                        .onItem()
-                        .transform(accounts -> findOpenAccountId(accounts).orElse(null));
-
-        accountIdUni.subscribe()
-                .with(Unchecked.consumer(accountId -> {
-                    if (accountId == null) {
-                        throw new UserDataException("Не найден аккаунт пользователя!");
-                    }
-                    log.info(">>> Load Account id: " + accountId);
-                    this.accountId = accountId;
-                }));
-
-        return accountIdUni;
+        return toUni(usersService.getAccounts())
+                .onFailure()
+                .transform(throwable -> new CriticalException(throwable, "Не удалось получить список аккаунтов! Проверьте токен и доступ."))
+                .onItem()
+                .transform(accounts -> {
+                            accountId = findOpenAccountId(accounts)
+                                    .orElseThrow(() -> new CriticalException("Не найден активный аккаунт! Проверьте их наличие."));
+                            appCache.putAccountId(accountId);
+                            return accountId;
+                        }
+                );
     }
 
     @Override
@@ -122,7 +119,6 @@ public class RealExecutor implements Executor {
                     .onItem()
                     .transformToUni(isHasPosition -> {
                         if (isHasPosition) {
-                            System.out.println(">>> Post sell 1");
                             return postSellLimitOrderDirect(figi, price);
                         } else {
                             eventLogger.log("Маржинальная торговля запрещена и нет позиций в этой акции. Продажу не выставляем");
@@ -148,8 +144,8 @@ public class RealExecutor implements Executor {
                 .onItem()
                 .transform(positions ->
                         Optional.ofNullable(positions.getSecurities()).orElse(Collections.emptyList())
-                        .stream()
-                        .anyMatch(securityPosition -> figi.equals(securityPosition.getFigi())));
+                                .stream()
+                                .anyMatch(securityPosition -> figi.equals(securityPosition.getFigi())));
     }
 
     // todo пересчитать оптимальность по двум заявкам из стакана

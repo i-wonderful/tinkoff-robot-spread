@@ -11,8 +11,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Вызов песочницы или реальных сервисов,
- * в зависимости от настройки robot.sandbox.mode
+ * Операции песочницы или реальных сервисов.
+ *
+ * Имплементация инициализируется в зависимости от настройки robot.sandbox.mode
  */
 public interface Executor {
 
@@ -63,5 +64,10 @@ public interface Executor {
      */
     boolean isMySellOrderOptimal(OrderState myOrderSell, Order askFromOrderbook);
 
+    /**
+     * Загрузить accountId.
+     *
+     * @return
+     */
     Uni<String> loadAccountId();
 }

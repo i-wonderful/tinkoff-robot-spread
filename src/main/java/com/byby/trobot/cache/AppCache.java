@@ -4,12 +4,18 @@ import io.quarkus.cache.Cache;
 import io.quarkus.cache.CacheKey;
 import io.quarkus.cache.CacheName;
 import io.quarkus.cache.CacheResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+/**
+ * Кеш accountId
+ */
 @ApplicationScoped
 public class AppCache {
+    private static final Logger log = LoggerFactory.getLogger(AppCache.class);
     private static final String ACCOUNT_KEY = "ACCOUNT_KEY";
 
     @Inject
@@ -21,7 +27,7 @@ public class AppCache {
     }
 
     public void putAccountId(String accountId) {
-        System.out.println(">>> putAccountId");
+        log.info(">>> Put to cache accountId=" + accountId);
         cache.invalidate(ACCOUNT_KEY)
                 .subscribe()
                 .with(unused -> putOrGetAccountId(ACCOUNT_KEY, accountId));
@@ -29,12 +35,7 @@ public class AppCache {
 
     @CacheResult(cacheName = "app-cache")
     protected String putOrGetAccountId(@CacheKey String key, String value) {
-        System.out.println(">>> Put to cache accountId = " + value);
         return value;
     }
-//    public String getAccountId() {
-//        return cache.get(ACCOUNT_KEY, () -> {
-//            return "null";
-//        });
-//    }
+
 }

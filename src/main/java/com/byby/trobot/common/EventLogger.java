@@ -79,7 +79,6 @@ public class EventLogger {
      * @return
      */
     public void log(String message, List<String> figis) {
-//        System.out.println(" >>>L>>>1 " + message + " " + figis);
         List<Uni<String>> tickerUnis = figis.stream()
                 .map(figi -> sharesService.findTickerByFigi(figi))
                 .collect(Collectors.toList());
@@ -169,8 +168,17 @@ public class EventLogger {
                 });
     }
 
+    public void logError(String message) {
+        log.warn(message);
+        bus.publish(GlobalBusAddress.LOG_ERROR, message);
+    }
+
     public void logError(Throwable exception) {
         log.error(">>> !!!!!!!!!!!!!!!!!!!!!!", exception);
-        bus.publish(GlobalBusAddress.LOG_ERR, ">>> Exception " + exception.getMessage());
+        bus.publish(GlobalBusAddress.LOG_ERROR, ">>> Exception " + exception.getMessage());
+    }
+
+    public void logCritical(String message) {
+        bus.publish(GlobalBusAddress.LOG_ERR_CRITICAL, message);
     }
 }

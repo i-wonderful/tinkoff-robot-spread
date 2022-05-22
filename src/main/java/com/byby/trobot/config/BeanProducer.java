@@ -1,5 +1,6 @@
 package com.byby.trobot.config;
 
+import com.byby.trobot.controller.handler.ExceptionHandler;
 import io.quarkus.arc.DefaultBean;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.runtime.Startup;

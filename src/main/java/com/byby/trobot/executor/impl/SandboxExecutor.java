@@ -3,6 +3,7 @@ package com.byby.trobot.executor.impl;
 import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.SandboxProperties;
+import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
@@ -16,11 +17,11 @@ import ru.tinkoff.piapi.contract.v1.*;
 import ru.tinkoff.piapi.core.InvestApi;
 import ru.tinkoff.piapi.core.SandboxService;
 
-import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -31,7 +32,6 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 /**
  * Операции с песочницей
  */
-
 @LookupIfProperty(name = "robot.sandbox.mode", stringValue = "true")
 @ApplicationScoped
 public class SandboxExecutor implements Executor, SandboxAccountService {
@@ -47,7 +47,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     private String accountId;
 
     public SandboxExecutor(SandboxProperties properties, InvestApi api, SpreadService spreadService, PortfolioMapper portfolioMapper, AppCache appCache, EventLogger eventLogger) {
-        log.info(">>> Init SandboxExecutor ");
+        log.info(">>> Init SandboxExecutor");
         this.properties = properties;
         this.sandboxService = api.getSandboxService();
         this.spreadService = spreadService;
@@ -56,40 +56,28 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         this.eventLogger = eventLogger;
     }
 
-    @PostConstruct
-    public void init() {
-        Uni.createFrom()
-                .completionStage(sandboxService.getAccounts())
-                .onItem()
-                .transformToUni(accounts -> findOpenAccountId(accounts)
-                                .map(accountId -> Uni.createFrom().item(accountId))
-                                .orElseGet(this::createNewAccount))
-                .subscribe()
-                .with(accountId -> {
-                    this.accountId = accountId;
-                    appCache.putAccountId(accountId);
-                });
-    }
-
+    @Override
     public Uni<String> loadAccountId() {
-        if (accountId == null) {
-            Uni<String> accountIdUni = Uni.createFrom()
-                    .completionStage(sandboxService.getAccounts())
-                    .onItem()
-                    .transformToUni(accounts -> findOpenAccountId(accounts)
-                            .map(accountId -> Uni.createFrom().item(accountId))
-                            .orElseGet(this::createNewAccount)
-                    );
-
-            accountIdUni
-                    .subscribe()
-                    .with(accountId -> this.accountId = accountId);
-
-            return accountIdUni;
+        if (accountId != null) {
+            return Uni.createFrom().item(accountId);
         }
-        return Uni.createFrom().item(accountId);
-    }
 
+        return toUni(sandboxService.getAccounts())
+                .onFailure()
+                .transform(throwable -> new CriticalException(throwable, "Не удалось получить аккаунт песочницы! Проверьте токен и доступ."))
+                .onItem()
+                .transformToUni(accounts -> {
+                            Optional<String> accountIdOpt = findOpenAccountId(accounts);
+                            accountIdOpt.ifPresent(accountId -> {
+                                appCache.putAccountId(accountId);
+                                this.accountId = accountId;
+                            });
+                            return accountIdOpt
+                                    .map(accountId -> Uni.createFrom().item(accountId))
+                                    .orElseGet(this::createNewAccount);
+                        }
+                );
+    }
 
 
     /**
@@ -97,7 +85,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
      */
     @Override
     public Uni<PostOrderResponse> postBuyLimitOrder(String figi, BigDecimal price) {
-        return Uni.createFrom().completionStage(sandboxService.postOrder(
+        return toUni(sandboxService.postOrder(
                 figi,
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
@@ -112,7 +100,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
      */
     @Override
     public Uni<PostOrderResponse> postSellLimitOrder(String figi, BigDecimal price) {
-        return Uni.createFrom().completionStage(sandboxService.postOrder(
+        return toUni(sandboxService.postOrder(
                 figi,
                 QUANTITY_DEFAULT,
                 bigDecimalToQuotation(price),
@@ -123,9 +111,9 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     }
 
     /**
-     * Проверяем будет ли наша виртуальная заявка myBuyOrder оптимальной.
+     * Проверяем будет ли наша виртуальная заявка песочницы myBuyOrder оптимальной.
      * В сандбоксе заявка не существует в реальном стакане,
-     * поэтому сравниваем цену моей заявки и цену на шаг выше заявки на покупку из стакана.
+     * поэтому сравниваем цену моей виртуальной заявки и цену на шаг выше заявки на покупку из стакана.
      * Если они одинаковы, то заявка оптимальна.
      *
      * @param myBuyOrder       моя заявка песочницы
@@ -228,8 +216,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
 
     private Uni<String> createNewAccount() {
         log.info(">>> API Call: sandboxService.openAccountSync");
-        return Uni.createFrom()
-                .completionStage(sandboxService.openAccount())
+        return toUni(sandboxService.openAccount())
                 .onItem()
                 .call(accountId -> {
                     MoneyValue balanceRub = bigDecimalToMoneyValue(properties.getInitBalanceRub());
@@ -240,7 +227,9 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
                     appCache.putAccountId(accountId);
                     this.accountId = accountId;
                     return Uni.createFrom().item(accountId);
-                });
+                })
+                .onFailure()
+                .transform(throwable -> new CriticalException(throwable, "Не удалось создать новый аккаунт песочницы!"));
     }
 
 }

@@ -6,6 +6,11 @@ export default {
     name: 'App',
     components: Object.assign({homepage}, pages),
 
+    data() {
+        return {
+            logCriticalErrors: []
+        }
+    },
     setup() {
         const {watchEffect, onMounted, ref} = Vue;
         const page = ref(null);
@@ -41,10 +46,19 @@ export default {
             window.onpopstate = function () {
                 page.value = window.location.pathname.split("/").pop()
             };
-        })
+        });
 
+        const eventBus = new EventBus('/eventbus');
+
+        eventBus.onopen = () => {
+            eventBus.registerHandler('LOG_ERR_CRITICAL', (error, message) => {
+                let div = document.createElement("div")
+                div.append(message.body)
+                document.getElementById("critical_error").append(div);
+            })
+        }
         return {
-            page, pages
+            page, pages, eventBus
         };
     },
     template: `
@@ -52,7 +66,7 @@ export default {
             <nav class="nav">
                 <div class="nav-left">
                     <div class="tabs">
-                    <button class="active" v-on:click="page = ''" class="button button-clear">
+                    <button v-on:click="page = ''" class="button button-clear">
                         Home
                     </button>
                     <template v-for="item, index in pages" key="item.name">
@@ -65,6 +79,7 @@ export default {
             </nav>
        </div>
         <div id="content">
+            <div id="critical_error" class="log-critical-error-panel"></div>
             <component :is="page || 'homepage'"></component>
         </div>
     `,

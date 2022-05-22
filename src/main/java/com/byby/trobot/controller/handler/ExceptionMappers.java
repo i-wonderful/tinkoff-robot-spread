@@ -1,12 +1,9 @@
 package com.byby.trobot.controller.handler;
 
 import com.byby.trobot.common.EventLogger;
-import com.byby.trobot.common.GlobalBusAddress;
-import com.byby.trobot.controller.exception.ApiCallException;
-import com.byby.trobot.controller.exception.UserDataException;
+import com.byby.trobot.controller.exception.CriticalException;
+import com.byby.trobot.controller.exception.BisinessException;
 import io.grpc.StatusRuntimeException;
-import io.quarkus.mutiny.runtime.MutinyInfrastructure;
-import io.vertx.mutiny.core.eventbus.EventBus;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 import org.slf4j.Logger;
@@ -16,6 +13,7 @@ import ru.tinkoff.piapi.core.exception.ApiRuntimeException;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.ws.rs.core.Response;
+import java.net.UnknownHostException;
 
 @ApplicationScoped
 public class ExceptionMappers {
@@ -24,43 +22,66 @@ public class ExceptionMappers {
     @Inject
     EventLogger eventLogger;
 
+    @Inject
+    ExceptionHandler exceptionHandler;
+
     /**
-     * Ошибки при вызовах Tinkoff invest api
-     *
-     * @param exception
-     * @return
+     * Критичные ошибки мешающие всей работе.
      */
     @ServerExceptionMapper
-    public RestResponse<String> mapException(ApiRuntimeException exception) {
-        System.out.println(">>>>>>>>>>>>>>!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1 ApiRuntimeException: ");
-        eventLogger.logError(exception);
-        return RestResponse
-                .status(Response.Status.INTERNAL_SERVER_ERROR,
-                        "Tinkoff exception ApiRuntimeException: " + exception.getMessage());
+    public RestResponse<String> map(CriticalException e) {
+        log.error(">>> UserDataCriticalException", e);
+        exceptionHandler.handleException(e);
+        return createResponse500("UserDataCriticalException: " + e.getMessage());
+    }
+
+    /**
+     * Не критичные ошибки.
+     */
+    @ServerExceptionMapper
+    public RestResponse<String> map(BisinessException e) {
+        eventLogger.logError(e.getMessage());
+        return createResponse400(e.getMessage());
+    }
+
+    /**
+     * Ошибки при вызовах Tinkoff Invest Api
+     */
+    @ServerExceptionMapper
+    public RestResponse<String> map(ApiRuntimeException e) {
+        System.out.println(">>>>>>>>>>>>>>!!!!!!!!!!!!!!!!!!!!!! Tinkoff ApiRuntimeException: ");
+        exceptionHandler.handleException(e);
+        return createResponse500("Tinkoff ApiRuntimeException: " + e.getMessage());
     }
 
     @ServerExceptionMapper
-    public RestResponse<String> mapException(ApiCallException e){
-        System.out.println(">>>>>>>>>>>>>>!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1 Method: " + e.getMethod());
+    public RestResponse<String> map(StatusRuntimeException e) {
         eventLogger.logError(e);
-        return RestResponse
-                .status(Response.Status.INTERNAL_SERVER_ERROR,
-                        "UserDataException: " + e.getMessage());
+        return createResponse500("Tinkoff StatusRuntimeException: " + e.getMessage());
     }
 
     @ServerExceptionMapper
-    public RestResponse<String> mapException(StatusRuntimeException e) {
+    public RestResponse<String> map(IllegalStateException e) {
         eventLogger.logError(e);
-        return RestResponse
-                .status(Response.Status.INTERNAL_SERVER_ERROR,
-                        "Tinkoff exception StatusRuntimeException: " + e.getMessage());
+        return createResponse500("IllegalStateException: " + e.getMessage());
     }
 
     @ServerExceptionMapper
-    public RestResponse<String> mapException(IllegalStateException e) {
-        eventLogger.logError(e);
+    public RestResponse<String> map(RuntimeException e) {
+        log.info(">>> Map RuntimeException");
+        if(e.getCause() instanceof UnknownHostException) {
+            exceptionHandler.handleCritical(e, "Проверьте соединение с интернетом!");
+        }
+        return createResponse500(e.getMessage());
+    }
+
+    private RestResponse<String> createResponse500(String message) {
         return RestResponse
-                .status(Response.Status.INTERNAL_SERVER_ERROR,
-                        "IllegalStateException: " + e.getMessage());
+                .status(Response.Status.INTERNAL_SERVER_ERROR, message);
+    }
+
+    private RestResponse<String> createResponse400(String message) {
+        return RestResponse
+                .status(Response.Status.BAD_REQUEST, message);
     }
 }

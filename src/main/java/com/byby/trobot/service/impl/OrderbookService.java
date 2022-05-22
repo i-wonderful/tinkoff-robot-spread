@@ -1,9 +1,8 @@
 package com.byby.trobot.service.impl;
 
 
-import com.byby.trobot.controller.exception.ApiCallException;
-import com.byby.trobot.strategy.impl.model.Spread;
-import io.quarkus.cache.CacheResult;
+import com.byby.trobot.cache.AppCache;
+import com.byby.trobot.controller.exception.CriticalException;
 import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,15 +13,10 @@ import ru.tinkoff.piapi.core.stream.MarketDataStreamService;
 import ru.tinkoff.piapi.core.stream.MarketDataSubscriptionService;
 import ru.tinkoff.piapi.core.stream.OrdersStreamService;
 import ru.tinkoff.piapi.core.stream.StreamProcessor;
-import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class OrderbookService {
@@ -32,11 +26,13 @@ public class OrderbookService {
     private MarketDataStreamService marketDataStreamService;
     private MarketDataService marketDataService;
     private OrdersStreamService ordersStreamService;
+    private AppCache appCache;
 
-    public OrderbookService(InvestApi api) {
+    public OrderbookService(InvestApi api, AppCache appCache) {
         this.marketDataStreamService = api.getMarketDataStreamService();
         this.marketDataService = api.getMarketDataService();
         this.ordersStreamService = api.getOrdersStreamService();
+        this.appCache = appCache;
     }
 
     /**
@@ -52,7 +48,6 @@ public class OrderbookService {
             } else if (response.hasPing()) {
                 log.info("пинг сообщение, figi {}", figi);
             } else if (response.hasOrderbook()) {
-//                log.info("новый данные по стакану " + response.getOrderbook());
                 listener.accept(response.getOrderbook());
             } else if (response.hasTrade()) {
                 log.info("Новые данные по сделкам !!! из marketDataStreamService: {}", response);
@@ -81,7 +76,9 @@ public class OrderbookService {
 
 
     /**
+     * Подписка стрим сделок.
      *
+     * @param listener обработчик
      */
     public void subscribeTradesStream(Consumer<OrderTrades> listener) {
         StreamProcessor<TradesStreamResponse> consumer = response -> {
@@ -95,13 +92,11 @@ public class OrderbookService {
             }
         };
 
-        // todo
         Consumer<Throwable> onErrorCallback = error -> {
-            throw new ApiCallException(error.getMessage(), error, "ordersStreamService.subscribeTrades");
+            throw new CriticalException(error, "Ошибка подписки на OrdersStreamService.subscribeTrades");
         };
 
-        //Подписка стрим сделок. Не блокирующий вызов
-        ordersStreamService.subscribeTrades(consumer, onErrorCallback);
+        ordersStreamService.subscribeTrades(consumer, onErrorCallback, List.of(appCache.getAccountId()));
     }
 
     /**

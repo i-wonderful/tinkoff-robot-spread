@@ -39,7 +39,10 @@ public class ApplicationInit {
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx);
         sockJSHandler.bridge(new SockJSBridgeOptions()
                 .addOutboundPermitted(new PermittedOptions().setAddress(LOG))
-                .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ORDER)));
+                .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ORDER))
+                .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ERROR))
+                .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ERR_CRITICAL))
+        );
         router.route("/eventbus/*").handler(sockJSHandler);
 
         vertx.eventBus().unregisterCodec(OrderStateDtoCodec.NAME);
@@ -54,13 +57,17 @@ public class ApplicationInit {
 
         vertx.exceptionHandler(handler);
 
-        // init cache
+        // init caches
         Uni.combine().all().unis(
                         executor.get().loadAccountId(),
                         sharesService.getShares())
-                .discardItems()
-                .subscribe()
-                .with((t) -> System.out.println(">>> Init App"));
+                .collectFailures()
+                .combinedWith(results -> true)
+                .onItem()
+                .invoke((t) -> log.info(">>> Init Application success"))
+                .onFailure()
+                .invoke((t) -> log.info(">>> Error Init application"))
+        ;
     }
 
     @PreDestroy

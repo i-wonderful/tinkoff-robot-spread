@@ -89,7 +89,7 @@ export default {
                 }
             });
             this.eventBus.registerHandler('LOG_ERROR', (error, message) => {
-               this.errors.push(message.body);
+                this.errors.push(message.body);
             });
         }
 
@@ -117,7 +117,6 @@ export default {
                         <span>
                             , откроется через {{exc.hoursBeforeOpen}} часов {{exc.minutesBeforeOpen}} минут
                         </span>
-                        
                     </span>
                     <br/>
                 </div>
@@ -164,9 +163,11 @@ export default {
         </div>
         
         <br/>
+        
+        <h5>Лог ошибок</h5>
         <div class="log-errors-panel">
-            <div v-for="(err, index) in errors" >
-                {{err[index]}}
+            <div v-for="(error, index) in errors"  >
+                {{errors[index]}}
             </div>
         </div>
         

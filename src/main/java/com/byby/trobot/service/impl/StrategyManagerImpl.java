@@ -3,7 +3,9 @@ package com.byby.trobot.service.impl;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.StrategySharesProperties;
+import com.byby.trobot.controller.exception.BisinessException;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.Strategy;
@@ -47,17 +49,29 @@ public class StrategyManagerImpl implements StrategyManager {
     @Inject
     SharesService sharesService;
 
+    @Inject
+    ExchangeService exchangeService;
+
     // запущена ли в данный момент
     private boolean isRun = false;
     // найдено ли нужное количество акций
     private boolean isAllFigiFind = false;
 
+    /**
+     * Запустить стратегию.
+     *
+     * @return
+     */
     @Override
     public Uni<Void> start() {
+        if(exchangeService.getExchangesOpenNow().isEmpty()) {
+            throw new BisinessException("Нет открытых бирж в данный момент.");
+        }
         if (this.isRun) {
             eventLogger.log("Уже запущен");
             return Uni.createFrom().voidItem();
         }
+
         eventLogger.log("Поехали!");
         return startFindFigi()
                 .onItem()
