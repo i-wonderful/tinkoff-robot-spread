@@ -12,21 +12,20 @@ import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.SandboxAccountService;
 import io.smallrye.mutiny.Uni;
 
-import javax.enterprise.context.RequestScoped;
+import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
-
 import java.util.List;
 
 import static com.byby.trobot.dto.mapper.SettingsMapper.toDto;
 
 @Path("/account")
 @Produces(MediaType.APPLICATION_JSON)
-@RequestScoped
+@ApplicationScoped
 public class AccountController {
     @Inject
     Instance<Executor> executor;

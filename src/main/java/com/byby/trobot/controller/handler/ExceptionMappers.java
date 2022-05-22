@@ -2,7 +2,7 @@ package com.byby.trobot.controller.handler;
 
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.controller.exception.CriticalException;
-import com.byby.trobot.controller.exception.BisinessException;
+import com.byby.trobot.controller.exception.BusinessException;
 import io.grpc.StatusRuntimeException;
 import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
@@ -39,7 +39,7 @@ public class ExceptionMappers {
      * Не критичные ошибки.
      */
     @ServerExceptionMapper
-    public RestResponse<String> map(BisinessException e) {
+    public RestResponse<String> map(BusinessException e) {
         eventLogger.logError(e.getMessage());
         return createResponse400(e.getMessage());
     }

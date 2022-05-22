@@ -13,6 +13,7 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.time.ZonedDateTime;
 
+@Deprecated
 @ApplicationScoped
 public class DbService {
 
@@ -31,10 +32,7 @@ public class DbService {
         return orderDoneRepository.persistAndFlush(o2);
     }
 
-    public Uni<Void> save(OrderTrades orderTrades) {
-        OrderDone orderDone = orderEntityMapper.toEntity(orderTrades);
-        return orderDone.persistAndFlush().replaceWithVoid();
-    }
+
 
     public Multi<OrderDone> getOrderDones(){
         return OrderDone.findAll().stream();

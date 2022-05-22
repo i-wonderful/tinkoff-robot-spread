@@ -3,9 +3,10 @@ package com.byby.trobot.service.impl;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.StrategySharesProperties;
-import com.byby.trobot.controller.exception.BisinessException;
+import com.byby.trobot.controller.exception.BusinessException;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.ExchangeService;
+import com.byby.trobot.service.StatisticService;
 import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.Strategy;
@@ -52,6 +53,9 @@ public class StrategyManagerImpl implements StrategyManager {
     @Inject
     ExchangeService exchangeService;
 
+    @Inject
+    StatisticService statisticService;
+
     // запущена ли в данный момент
     private boolean isRun = false;
     // найдено ли нужное количество акций
@@ -65,7 +69,7 @@ public class StrategyManagerImpl implements StrategyManager {
     @Override
     public Uni<Void> start() {
         if(exchangeService.getExchangesOpenNow().isEmpty()) {
-            throw new BisinessException("Нет открытых бирж в данный момент.");
+            throw new BusinessException("Нет открытых бирж в данный момент.");
         }
         if (this.isRun) {
             eventLogger.log("Уже запущен");
@@ -75,11 +79,11 @@ public class StrategyManagerImpl implements StrategyManager {
         eventLogger.log("Поехали!");
         return startFindFigi()
                 .onItem()
-                .call(() -> {
+                .invoke(() -> {
                     this.isRun = true;
                     this.isAllFigiFind = false;
-                    return Uni.createFrom().voidItem();
-                });
+                })
+                .call(() -> statisticService.start().replaceWithVoid());
     }
 
 
@@ -95,6 +99,7 @@ public class StrategyManagerImpl implements StrategyManager {
         return cacheManager.getFigi()
                 .call(figi -> strategy.stopListening(figi))
                 .call(() -> cacheManager.clear())
+                .call(() -> statisticService.stop())
                 .invoke(() -> {
                     findFigiService.stopTimers();
                     eventLogger.log("Остановлен.");

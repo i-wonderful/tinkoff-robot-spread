@@ -1,7 +1,7 @@
 package com.byby.trobot.service.impl;
 
 import com.byby.trobot.config.ApplicationProperties;
-import com.byby.trobot.controller.exception.BisinessException;
+import com.byby.trobot.controller.exception.BusinessException;
 import com.byby.trobot.dto.ExchangeDto;
 import com.byby.trobot.service.ExchangeService;
 import com.google.protobuf.Timestamp;
@@ -118,7 +118,7 @@ public class ExchangeServiceImpl implements ExchangeService {
      */
     private timeBefore getHoursAndMinutesBeforeOpen(List<TradingDay> tradingDays) {
         if (tradingDays == null || tradingDays.isEmpty()) {
-            throw new BisinessException("Error get trading days");
+            throw new BusinessException("Error get trading days");
         }
         TradingDay firstWorkDay = findNextWorkDay(tradingDays);
 
@@ -143,7 +143,7 @@ public class ExchangeServiceImpl implements ExchangeService {
         return tradingDays.stream()
                 .filter(TradingDay::getIsTradingDay)
                 .findFirst()
-                .orElse(null);
+                .orElseThrow(() -> new BusinessException("Не найдено рабочих дней в расписании"));
     }
 
     class timeBefore {

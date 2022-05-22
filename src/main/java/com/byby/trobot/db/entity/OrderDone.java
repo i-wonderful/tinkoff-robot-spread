@@ -1,24 +1,19 @@
 package com.byby.trobot.db.entity;
 
-import com.google.protobuf.Timestamp;
-import com.google.type.DateTime;
 import io.quarkus.hibernate.reactive.panache.PanacheEntity;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.ZonedDateTime;
 
 /**
  * Завершенные заявки.
- *
  */
 @Entity
 @Table(name = "order_done")
 //@NamedQuery(name = "Customers.findAll", query = "SELECT c FROM OrderDone c ORDER BY c.ticker")
 public class OrderDone extends PanacheEntity {
-    @Column(length = 100)
+    @Column(name = "order_id", length = 100)
     String orderId;
 
     @Column(length = 20)
@@ -29,9 +24,14 @@ public class OrderDone extends PanacheEntity {
 
     BigDecimal price;
 
+    @Column(name = "datetime_done")
     ZonedDateTime dateTimeDone;
 
     OrderDoneDirection direction;
+
+    @ManyToOne
+    @JoinColumn(name = "robot_session_id", foreignKey = @ForeignKey(name = "robot_session_id_fk"))
+    RobotSession robotSession;
 
     public String getFigi() {
         return figi;
@@ -80,5 +80,13 @@ public class OrderDone extends PanacheEntity {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public RobotSession getRobotSession() {
+        return robotSession;
+    }
+
+    public void setRobotSession(RobotSession userSession) {
+        this.robotSession = userSession;
     }
 }

@@ -1,6 +1,5 @@
 package com.byby.trobot.strategy.impl;
 
-import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.strategy.impl.model.Spread;
 
