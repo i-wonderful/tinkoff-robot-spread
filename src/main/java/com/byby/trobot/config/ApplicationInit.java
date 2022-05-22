@@ -2,12 +2,10 @@ package com.byby.trobot.config;
 
 import static com.byby.trobot.common.GlobalBusAddress.*;
 
-import com.byby.trobot.controller.VertxController;
 import com.byby.trobot.dto.codec.ListCodec;
 import com.byby.trobot.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
-import com.byby.trobot.service.impl.ExchangeService;
 import com.byby.trobot.service.impl.SharesService;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.bridge.PermittedOptions;
@@ -17,14 +15,12 @@ import io.vertx.mutiny.ext.web.Router;
 import io.vertx.mutiny.ext.web.handler.sockjs.SockJSHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.piapi.core.exception.ApiRuntimeException;
 
 import javax.annotation.PreDestroy;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import java.util.List;
 import java.util.function.Consumer;
 
 @ApplicationScoped

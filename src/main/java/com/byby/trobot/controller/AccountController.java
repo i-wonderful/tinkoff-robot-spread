@@ -2,14 +2,14 @@ package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.config.StrategySharesProperties;
-import com.byby.trobot.dto.ExchangeOpenDto;
+import com.byby.trobot.dto.ExchangeDto;
 import com.byby.trobot.dto.OrderStateDto;
 import com.byby.trobot.dto.PortfolioDto;
 import com.byby.trobot.dto.SettingsRobotDto;
 import com.byby.trobot.dto.mapper.OrderMapper;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.SandboxAccountService;
-import com.byby.trobot.service.impl.ExchangeService;
 import io.smallrye.mutiny.Uni;
 
 import javax.enterprise.context.RequestScoped;
@@ -69,8 +69,8 @@ public class AccountController {
      */
     @GET
     @Path("/exchanges")
-    public Uni<List<ExchangeOpenDto>> openExchanges() {
-        List<ExchangeOpenDto> openExchanges = exchangeService.getExchangesInfoNow();
+    public Uni<List<ExchangeDto>> openExchanges() {
+        List<ExchangeDto> openExchanges = exchangeService.getExchangesInfo();
         return Uni.createFrom().item(openExchanges);
     }
 

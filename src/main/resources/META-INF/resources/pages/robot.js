@@ -111,9 +111,13 @@ export default {
                 <div v-for="(exc, index) in exchanges" >
                     <b style="padding-right: 10px">{{exc.name}}</b> 
                     <span v-if="exc.open">открыта</span>
-                    <span v-else>закрыта, 
-                        <span v-if="exc.tradingDay">откроется через {{exc.hoursBeforeOpen}} часов {{exc.minutesBeforeOpen}} минут</span>
-                        <span v-else>выходной</span>
+                    <span v-else>
+                        закрыта
+                        <span v-if="exc.tradingDay==false">, выходной</span>
+                        <span>
+                            , откроется через {{exc.hoursBeforeOpen}} часов {{exc.minutesBeforeOpen}} минут
+                        </span>
+                        
                     </span>
                     <br/>
                 </div>

@@ -1,6 +1,6 @@
 package com.byby.trobot.dto;
 
-public class ExchangeOpenDto {
+public class ExchangeDto {
     private String name;
     private boolean isOpen;
     private boolean isTradingDay;

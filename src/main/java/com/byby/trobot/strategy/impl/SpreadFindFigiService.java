@@ -3,7 +3,7 @@ package com.byby.trobot.strategy.impl;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.controller.handler.ExceptionHandler;
-import com.byby.trobot.service.impl.ExchangeService;
+import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.service.impl.SpreadService;
 import com.byby.trobot.strategy.FindFigiService;
