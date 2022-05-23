@@ -19,8 +19,8 @@ public class RobotSession extends PanacheEntity {
     @Column(name = "end_robot")
     LocalDateTime endRobot;
 
-    @OneToMany(fetch = FetchType.EAGER, cascade = {CascadeType.REMOVE})
-    List<OrderDone> orders;
+    @OneToMany(fetch = FetchType.EAGER, cascade = {CascadeType.REMOVE}, mappedBy = "robotSession")
+    List<OrderDone> orderDones;
 
     public LocalDateTime getStartRobot() {
         return startRobot;
@@ -38,12 +38,12 @@ public class RobotSession extends PanacheEntity {
         this.endRobot = end;
     }
 
-    public List<OrderDone> getOrders() {
-        return orders;
+    public List<OrderDone> getOrderDones() {
+        return orderDones;
     }
 
-    public void setOrders(List<OrderDone> orders) {
-        this.orders = orders;
+    public void setOrderDones(List<OrderDone> orders) {
+        this.orderDones = orders;
     }
 
     public String getAccountId() {

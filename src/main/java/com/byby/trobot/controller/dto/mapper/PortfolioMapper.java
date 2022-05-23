@@ -1,27 +1,18 @@
-package com.byby.trobot.dto.mapper;
+package com.byby.trobot.controller.dto.mapper;
 
-import com.byby.trobot.dto.MoneyDto;
-import com.byby.trobot.dto.PortfolioDto;
-import com.byby.trobot.dto.PortfolioPositionDto;
-import com.byby.trobot.service.impl.SharesService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import com.byby.trobot.controller.dto.PortfolioDto;
+import com.byby.trobot.controller.dto.MoneyDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.MoneyValue;
-import ru.tinkoff.piapi.contract.v1.PortfolioPosition;
 import ru.tinkoff.piapi.contract.v1.PortfolioResponse;
 import ru.tinkoff.piapi.contract.v1.Quotation;
 import ru.tinkoff.piapi.core.models.Money;
 import ru.tinkoff.piapi.core.models.Portfolio;
-import ru.tinkoff.piapi.core.models.Position;
 
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
-import static java.util.Optional.ofNullable;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 

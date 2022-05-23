@@ -68,7 +68,7 @@ public class ExceptionMappers {
 
     @ServerExceptionMapper
     public RestResponse<String> map(RuntimeException e) {
-        log.info(">>> Map RuntimeException");
+        log.info(">>> Map RuntimeException " + e);
         if(e.getCause() instanceof UnknownHostException) {
             exceptionHandler.handleCritical(e, "Проверьте соединение с интернетом!");
         }

@@ -1,13 +1,12 @@
 package com.byby.trobot.service;
 
-import com.byby.trobot.db.entity.OrderDone;
-import com.byby.trobot.db.entity.RobotSession;
+import com.byby.trobot.controller.dto.RobotSessionDto;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import ru.tinkoff.piapi.contract.v1.OrderTrades;
 
 /**
- *
+ * Сервис статистики
  */
 public interface StatisticService {
 
@@ -27,7 +26,7 @@ public interface StatisticService {
      *
      * @return
      */
-    Multi<RobotSession> getAll();
+    Multi<RobotSessionDto> getAll();
 
     /**
      *

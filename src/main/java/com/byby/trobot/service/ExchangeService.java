@@ -1,9 +1,12 @@
 package com.byby.trobot.service;
 
-import com.byby.trobot.dto.ExchangeDto;
+import com.byby.trobot.controller.dto.ExchangeDto;
 
 import java.util.List;
 
+/**
+ * Сервис получения информации о биржах.
+ */
 public interface ExchangeService {
 
     /**

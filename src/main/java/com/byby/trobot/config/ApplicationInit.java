@@ -2,8 +2,8 @@ package com.byby.trobot.config;
 
 import static com.byby.trobot.common.GlobalBusAddress.*;
 
-import com.byby.trobot.dto.codec.ListCodec;
-import com.byby.trobot.dto.codec.OrderStateDtoCodec;
+import com.byby.trobot.controller.dto.codec.ListCodec;
+import com.byby.trobot.controller.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
 import com.byby.trobot.service.impl.SharesService;
@@ -61,20 +61,16 @@ public class ApplicationInit {
         Uni.combine().all().unis(
                         executor.get().loadAccountId(),
                         sharesService.getShares())
-                .collectFailures()
-                .combinedWith(results -> true)
-                .onItem()
-                .invoke((t) -> log.info(">>> Init Application success"))
-                .onFailure()
-                .invoke((t) -> log.info(">>> Error Init application"))
-        ;
+                .discardItems()
+                .subscribe()
+                .with((t) -> log.info(">>> Init App"));
     }
 
     @PreDestroy
     public void preDestroy() {
         strategyManager.stop()
                 .subscribe()
-                .with(unused -> System.out.println(">>> Stop strategy"))
+                .with(unused -> log.info(">>> Stop strategy"))
         ;
     }
 }

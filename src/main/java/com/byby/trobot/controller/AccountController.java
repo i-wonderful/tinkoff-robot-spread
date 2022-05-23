@@ -2,11 +2,11 @@ package com.byby.trobot.controller;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.config.StrategySharesProperties;
-import com.byby.trobot.dto.ExchangeDto;
-import com.byby.trobot.dto.OrderStateDto;
-import com.byby.trobot.dto.PortfolioDto;
-import com.byby.trobot.dto.SettingsRobotDto;
-import com.byby.trobot.dto.mapper.OrderMapper;
+import com.byby.trobot.controller.dto.ExchangeDto;
+import com.byby.trobot.controller.dto.OrderStateDto;
+import com.byby.trobot.controller.dto.PortfolioDto;
+import com.byby.trobot.controller.dto.SettingsRobotDto;
+import com.byby.trobot.controller.dto.mapper.OrderMapper;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.SandboxAccountService;
@@ -21,7 +21,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import java.util.List;
 
-import static com.byby.trobot.dto.mapper.SettingsMapper.toDto;
+import static com.byby.trobot.controller.dto.mapper.SettingsMapper.toDto;
 
 @Path("/account")
 @Produces(MediaType.APPLICATION_JSON)

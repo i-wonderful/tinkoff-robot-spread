@@ -12,6 +12,7 @@ import javax.inject.Inject;
 
 /**
  * Кеш.
+ *
  * accountId
  * robotSessionId
  */

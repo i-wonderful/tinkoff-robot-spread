@@ -1,8 +1,8 @@
-package com.byby.trobot.dto.mapper;
+package com.byby.trobot.controller.dto.mapper;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.config.StrategySharesProperties;
-import com.byby.trobot.dto.SettingsRobotDto;
+import com.byby.trobot.controller.dto.SettingsRobotDto;
 import com.google.common.base.Strings;
 
 import java.util.Collections;

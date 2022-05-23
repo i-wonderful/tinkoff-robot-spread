@@ -2,7 +2,7 @@ package com.byby.trobot.service.impl;
 
 import com.byby.trobot.config.ApplicationProperties;
 import com.byby.trobot.controller.exception.BusinessException;
-import com.byby.trobot.dto.ExchangeDto;
+import com.byby.trobot.controller.dto.ExchangeDto;
 import com.byby.trobot.service.ExchangeService;
 import com.google.protobuf.Timestamp;
 import org.slf4j.Logger;

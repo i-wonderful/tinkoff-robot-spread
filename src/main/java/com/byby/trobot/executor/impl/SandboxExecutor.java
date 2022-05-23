@@ -4,8 +4,8 @@ import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.SandboxProperties;
 import com.byby.trobot.controller.exception.CriticalException;
-import com.byby.trobot.dto.PortfolioDto;
-import com.byby.trobot.dto.mapper.PortfolioMapper;
+import com.byby.trobot.controller.dto.PortfolioDto;
+import com.byby.trobot.controller.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.SandboxAccountService;
 import com.byby.trobot.service.impl.SpreadService;
@@ -61,7 +61,7 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         if (accountId != null) {
             return Uni.createFrom().item(accountId);
         }
-
+        log.info(">>> loadAccountId");
         return toUni(sandboxService.getAccounts())
                 .onFailure()
                 .transform(throwable -> new CriticalException(throwable, "Не удалось получить аккаунт песочницы! Проверьте токен и доступ."))

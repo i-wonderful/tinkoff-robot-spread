@@ -1,7 +1,7 @@
 export default {
     name: 'Robot',
     setup() {
-        const title = '123'
+        const title = 'Robot'
         return {title}
     },
     data() {
@@ -59,16 +59,13 @@ export default {
                 })
         },
 
-        // todo for testing
-        oneTick() {
-            axios.get("/vertx/process");
-        }
     },
     mounted() {
         this.eventBus = new EventBus('/eventbus');
         this.eventBus.onopen = () => {
             this.eventBus.registerHandler('LOG', (error, message) => {
                 this.logs.push(message.body);
+                // document.getElementById( 'log-panel' ).scrollIntoView();
             });
             this.eventBus.registerHandler('LOG_ORDER', (error, message) => {
                 const order = message.body;
@@ -104,8 +101,7 @@ export default {
 
     template: `
     <div>
-        <h5>{{title}}</h5>
-        <div class="grid">
+        <div class="row">
             <div class="col-3">Биржи:</div>
             <div class="col-9">
                 <div v-for="(exc, index) in exchanges" >
@@ -125,9 +121,8 @@ export default {
     
         <div>
             <button @click="onStart" v-if="isRun==false">Start</button>
-            <button @click="oneTick">One tick</button>
+            <button @click="onStop" v-if="isRun">Stop</button>
             <button @click="onCancelAllOrders">Отменить все заявки</button>
-            <button @click="onStop" v-if="isRun" >Stop</button>
         </div>
         
         <h5>Заявки</h5>
@@ -156,7 +151,7 @@ export default {
         </div>
         
         <h5>Основной лог</h5>
-        <div class="log-panel">
+        <div id="log-panel" class="log-panel">
             <div v-for="(log, index) in logs" >
                 {{logs[index]}}
             </div>

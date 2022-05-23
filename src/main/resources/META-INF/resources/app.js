@@ -64,18 +64,14 @@ export default {
     template: `
         <div id="sidebar">
             <nav class="nav">
-                <div class="nav-left">
-                    <div class="tabs">
-                    <button v-on:click="page = ''" class="button button-clear">
-                        Home
-                    </button>
+                    <h5 class="nav-logo" v-on:click="page = ''" >
+                         Tinkoff Spread Robot
+                    </h5>
                     <template v-for="item, index in pages" key="item.name">
-                        <button v-on:click="page = index" class="button button-clear">
+                        <a v-on:click="page = index" class="nav-item">
                             {{ item.name }}
-                        </button>
+                        </a>
                     </template>
-                    </div>
-                </div>               
             </nav>
        </div>
         <div id="content">

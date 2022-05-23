@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 public class OrderbookService {
     private static final Logger log = LoggerFactory.getLogger(OrderbookService.class);
     private static final String ORDERBOOK_STREAM_NAME = "my_orderbook";
+    private static final int ORDERBOOK_DEPTH = 1;
 
     private MarketDataStreamService marketDataStreamService;
     private MarketDataService marketDataService;
@@ -49,8 +50,6 @@ public class OrderbookService {
                 log.info("пинг сообщение, figi {}", figi);
             } else if (response.hasOrderbook()) {
                 listener.accept(response.getOrderbook());
-            } else if (response.hasTrade()) {
-                log.info("Новые данные по сделкам !!! из marketDataStreamService: {}", response);
             } else if (response.hasSubscribeOrderBookResponse()) {
                 var successCount = response.getSubscribeOrderBookResponse().getOrderBookSubscriptionsList().stream().filter(el -> el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
                 var errorCount = response.getSubscribeTradesResponse().getTradeSubscriptionsList().stream().filter(el -> !el.getSubscriptionStatus().equals(SubscriptionStatus.SUBSCRIPTION_STATUS_SUCCESS)).count();
@@ -63,15 +62,7 @@ public class OrderbookService {
 
         marketDataStreamService
                 .newStream(ORDERBOOK_STREAM_NAME, processor, onErrorCallback)
-                .subscribeOrderbook(figi, 1);
-
-        marketDataStreamService // todo проверить!!!!
-                .newStream("trades_stream", processor, onErrorCallback)
-                .subscribeTrades(figi);
-//
-//        api.getMarketDataStreamService()
-//                .newStream("last_prices_stream", processor, onErrorCallback)
-//                .subscribeLastPrices(figi);
+                .subscribeOrderbook(figi, ORDERBOOK_DEPTH);
     }
 
 
@@ -108,7 +99,7 @@ public class OrderbookService {
         MarketDataSubscriptionService stream = marketDataStreamService
                 .getStreamById(ORDERBOOK_STREAM_NAME);
         if (stream != null) {
-            stream.unsubscribeOrderbook(figi, 1);
+            stream.unsubscribeOrderbook(figi, ORDERBOOK_DEPTH);
         }
     }
 

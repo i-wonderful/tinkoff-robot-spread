@@ -132,6 +132,13 @@ public class VertxController {
         return cacheManager.getFigiSync();
     }
 
+    @GET
+    @Path("/cache-get-account")
+    public String getFromCacheAccount() {
+        log.info(">>> getFromCacheAccount");
+        return appCache.getAccountId();
+    }
+
 
     @GET
     @Path("/cache-add")

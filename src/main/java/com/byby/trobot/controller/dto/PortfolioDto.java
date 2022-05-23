@@ -1,4 +1,4 @@
-package com.byby.trobot.dto;
+package com.byby.trobot.controller.dto;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

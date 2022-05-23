@@ -1,4 +1,4 @@
-package com.byby.trobot.dto;
+package com.byby.trobot.controller.dto;
 
 public class SettingsRobotDto {
     private boolean sandboxMode;

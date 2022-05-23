@@ -1,6 +1,6 @@
 package com.byby.trobot.executor;
 
-import com.byby.trobot.dto.PortfolioDto;
+import com.byby.trobot.controller.dto.PortfolioDto;
 import io.smallrye.mutiny.Uni;
 import ru.tinkoff.piapi.contract.v1.Order;
 import ru.tinkoff.piapi.contract.v1.OrderState;

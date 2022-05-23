@@ -1,5 +1,6 @@
 package com.byby.trobot.db.mapper;
 
+import com.byby.trobot.controller.dto.OrderDoneDto;
 import com.byby.trobot.db.entity.OrderDone;
 import com.byby.trobot.db.entity.OrderDoneDirection;
 import com.byby.trobot.service.impl.SharesService;
@@ -14,9 +15,13 @@ import javax.inject.Inject;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
-public class OrderEntityMapper {
+public class OrderDoneMapper {
 
     @Inject
     SharesService sharesService;
@@ -26,15 +31,41 @@ public class OrderEntityMapper {
         orderDone.setOrderId(orderTrades.getOrderId());
         orderDone.setFigi(orderTrades.getFigi());
         orderDone.setDirection(mapDirection(orderTrades.getDirection()));
-        orderDone.setTicker(sharesService.findTickerByFigiSync(orderDone.getFigi()));
+//        orderDone.setTicker(sharesService.findTickerByFigiSync(orderDone.getFigi())); // todo
 
-        // мы торгуем по одной акции
+        // мы торгуем по одной сделке
         if (orderTrades.getTradesCount() == 1) {
+
             OrderTrade ot = orderTrades.getTrades(0);
+            orderDone.setQuantity(ot.getQuantity());
             orderDone.setDateTimeDone(mapDatetime(ot.getDateTime()));
             orderDone.setPrice(MapperUtils.quotationToBigDecimal(ot.getPrice()));
         }
         return orderDone;
+    }
+
+    public static List<OrderDoneDto> toDto(List<OrderDone> entities) {
+        return Optional.ofNullable(entities).orElse(Collections.emptyList())
+                .stream()
+                .map(OrderDoneMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public static OrderDoneDto toDto(OrderDone entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        OrderDoneDto dto = new OrderDoneDto();
+        dto.setPrice(entity.getPrice());
+        dto.setFigi(entity.getFigi());
+        dto.setOrderId(entity.getOrderId());
+        dto.setDirection(entity.getDirection());
+        dto.setDateTimeDone(entity.getDateTimeDone());
+        dto.setQuantity(entity.getQuantity());
+        dto.setTicker(entity.getTicker());
+        return dto;
+
     }
 
     private ZonedDateTime mapDatetime(Timestamp ts) {
@@ -42,7 +73,6 @@ public class OrderEntityMapper {
         ZoneId z = ZoneId.systemDefault(); // todo Get from settings
         ZonedDateTime zdt = instant.atZone(z);
 
-        // todo проверить тут на реальных сделках
         return zdt;
     }
 

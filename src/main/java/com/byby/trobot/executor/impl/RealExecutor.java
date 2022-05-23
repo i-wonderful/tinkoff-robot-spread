@@ -5,8 +5,8 @@ import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.AppProperties;
 import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.controller.handler.ExceptionHandler;
-import com.byby.trobot.dto.PortfolioDto;
-import com.byby.trobot.dto.mapper.PortfolioMapper;
+import com.byby.trobot.controller.dto.PortfolioDto;
+import com.byby.trobot.controller.dto.mapper.PortfolioMapper;
 import com.byby.trobot.executor.Executor;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
@@ -71,17 +71,20 @@ public class RealExecutor implements Executor {
         if (accountId != null) {
             return Uni.createFrom().item(accountId);
         }
+        log.info(">>> loadAccountId");
         return toUni(usersService.getAccounts())
-                .onFailure()
-                .transform(throwable -> new CriticalException(throwable, "Не удалось получить список аккаунтов! Проверьте токен и доступ."))
                 .onItem()
                 .transform(accounts -> {
                             accountId = findOpenAccountId(accounts)
                                     .orElseThrow(() -> new CriticalException("Не найден активный аккаунт! Проверьте их наличие."));
+                            log.info(">>> AccountId=" + this.accountId);
                             appCache.putAccountId(accountId);
                             return accountId;
                         }
-                );
+                )
+                .onFailure()
+                .transform(throwable -> new CriticalException(throwable, "Не удалось получить список аккаунтов! Проверьте токен и доступ."))
+                ;
     }
 
     @Override
@@ -119,7 +122,9 @@ public class RealExecutor implements Executor {
                     .onItem()
                     .transformToUni(isHasPosition -> {
                         if (isHasPosition) {
-                            return postSellLimitOrderDirect(figi, price);
+                            return postSellLimitOrderDirect(figi, price)
+                                    .onFailure()
+                                    .transform(throwable -> new CriticalException(throwable, "Ошибка выставления заявки на продажу."));
                         } else {
                             eventLogger.log("Маржинальная торговля запрещена и нет позиций в этой акции. Продажу не выставляем");
                             return Uni.createFrom().nothing();

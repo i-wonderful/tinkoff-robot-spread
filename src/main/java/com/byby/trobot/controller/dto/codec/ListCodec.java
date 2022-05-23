@@ -1,6 +1,6 @@
-package com.byby.trobot.dto.codec;
+package com.byby.trobot.controller.dto.codec;
 
-import com.byby.trobot.dto.OrderStateDto;
+import com.byby.trobot.controller.dto.OrderStateDto;
 import io.quarkus.vertx.LocalEventBusCodec;
 
 public class ListCodec extends LocalEventBusCodec<OrderStateDto> {

@@ -22,7 +22,11 @@ public class OrderDone extends PanacheEntity {
     @Column(length = 10)
     String ticker;
 
+    // Цена одного лота
     BigDecimal price;
+
+    // Количество лотов
+    long quantity;
 
     @Column(name = "datetime_done")
     ZonedDateTime dateTimeDone;
@@ -88,5 +92,13 @@ public class OrderDone extends PanacheEntity {
 
     public void setRobotSession(RobotSession userSession) {
         this.robotSession = userSession;
+    }
+
+    public long getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(long quantity) {
+        this.quantity = quantity;
     }
 }

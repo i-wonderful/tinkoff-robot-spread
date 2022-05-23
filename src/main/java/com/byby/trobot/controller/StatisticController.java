@@ -1,5 +1,6 @@
 package com.byby.trobot.controller;
 
+import com.byby.trobot.controller.dto.RobotSessionDto;
 import com.byby.trobot.db.entity.RobotSession;
 import com.byby.trobot.service.StatisticService;
 import io.smallrye.mutiny.Multi;
@@ -21,7 +22,7 @@ public class StatisticController {
 
     @GET
     @Path("/all")
-    public Multi<RobotSession> getAll() {
+    public Multi<RobotSessionDto> getAll() {
         return statisticService.getAll();
     }
 }

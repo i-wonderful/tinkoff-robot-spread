@@ -4,6 +4,7 @@ import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.common.GlobalBusAddress;
 import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.controller.exception.BusinessException;
+import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.StatisticService;
@@ -198,6 +199,8 @@ public class StrategyManagerImpl implements StrategyManager {
                     return allAddToCache;
                 })
                 .call(allAddToCache -> cacheManager.clearAndAddFigi(allAddToCache))
+                .onFailure()
+                .transform((throwable) -> new CriticalException(throwable, "Ошибка запуска стратегии"))
                 .subscribe()
                 .with(strategy::start);
     }

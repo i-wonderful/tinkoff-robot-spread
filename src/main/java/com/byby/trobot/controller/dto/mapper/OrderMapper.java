@@ -1,6 +1,6 @@
-package com.byby.trobot.dto.mapper;
+package com.byby.trobot.controller.dto.mapper;
 
-import com.byby.trobot.dto.OrderStateDto;
+import com.byby.trobot.controller.dto.OrderStateDto;
 import com.byby.trobot.service.impl.SharesService;
 import io.smallrye.mutiny.Uni;
 import ru.tinkoff.piapi.contract.v1.OrderDirection;
@@ -21,12 +21,6 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 public class OrderMapper {
     @Inject
     SharesService sharesService;
-
-    public Uni<List<OrderStateDto>> toDto(Uni<List<OrderState>> orderStates) {
-        return orderStates
-                .onItem()
-                .transformToUni(os -> toDtoUni(os));
-    }
 
     public Uni<List<OrderStateDto>> toDtoUni(List<OrderState> orderStates) {
         if (orderStates == null || orderStates.isEmpty()) {

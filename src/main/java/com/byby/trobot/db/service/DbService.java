@@ -2,12 +2,10 @@ package com.byby.trobot.db.service;
 
 import com.byby.trobot.db.entity.OrderDone;
 import com.byby.trobot.db.entity.OrderDoneDirection;
-import com.byby.trobot.db.mapper.OrderEntityMapper;
+import com.byby.trobot.db.mapper.OrderDoneMapper;
 import com.byby.trobot.db.repository.OrderDoneRepository;
-import com.google.protobuf.Timestamp;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import ru.tinkoff.piapi.contract.v1.OrderTrades;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -21,7 +19,7 @@ public class DbService {
     OrderDoneRepository orderDoneRepository;
 
     @Inject
-    OrderEntityMapper orderEntityMapper;
+    OrderDoneMapper orderDoneMapper;
 
     // for test
     public Uni save2(){

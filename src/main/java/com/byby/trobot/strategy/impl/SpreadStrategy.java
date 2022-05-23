@@ -76,8 +76,8 @@ public class SpreadStrategy implements Strategy {
                 String figiOrder = orderTrades.getFigi();
                 OrderDirection direction = orderTrades.getDirection();
                 statisticService.save(orderTrades)
-                        .onItem()
-                        .invoke(() -> eventLogger.logOrderDone(orderId, figiOrder, direction));
+                        .subscribe()
+                        .with((t) -> eventLogger.logOrderDone(orderId, figiOrder, direction));
             });
         }
 
@@ -265,7 +265,7 @@ public class SpreadStrategy implements Strategy {
      */
     private void cancelOrders(OrderPair orderPair) {
         cancelOrder(orderPair.getBuy());
-        cancelOrder(orderPair.getBuy());
+        cancelOrder(orderPair.getSell());
     }
 
     /**

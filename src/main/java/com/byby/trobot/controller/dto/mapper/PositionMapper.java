@@ -1,7 +1,7 @@
-package com.byby.trobot.dto.mapper;
+package com.byby.trobot.controller.dto.mapper;
 
-import com.byby.trobot.dto.PortfolioDto;
-import com.byby.trobot.dto.PortfolioPositionDto;
+import com.byby.trobot.controller.dto.PortfolioDto;
+import com.byby.trobot.controller.dto.PortfolioPositionDto;
 import com.byby.trobot.service.impl.SharesService;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import ru.tinkoff.piapi.contract.v1.PortfolioPosition;
