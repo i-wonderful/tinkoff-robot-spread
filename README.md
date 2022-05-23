@@ -21,7 +21,7 @@ docker run -it --rm=true \
 ```shell script
 java -jar ./target/quarkus-app/quarkus-run.jar
 ```
-Открыть в браузере: http:localhost:8081/
+Открыть в браузере: http://localhost:8081/
 
 > **_NOTE:_**  Можно запустить в дев режиме: ./mvnw compile quarkus:dev
 
