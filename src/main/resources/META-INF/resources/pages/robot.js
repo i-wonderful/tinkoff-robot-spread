@@ -120,8 +120,8 @@ export default {
         </div>
     
         <div>
-            <button @click="onStart" v-if="isRun==false">Start</button>
-            <button @click="onStop" v-if="isRun">Stop</button>
+            <button @click="onStart">Start</button>
+            <button @click="onStop">Stop</button>
             <button @click="onCancelAllOrders">Отменить все заявки</button>
         </div>
         

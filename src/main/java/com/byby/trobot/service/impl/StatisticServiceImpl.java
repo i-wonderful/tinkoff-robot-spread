@@ -42,7 +42,7 @@ public class StatisticServiceImpl implements StatisticService {
         log.info(">>> Statistic start");
         RobotSession robotSession = new RobotSession();
         robotSession.setStartRobot(LocalDateTime.now());
-        robotSession.setAccountId(appCache.getAccountId()); // todo
+//        robotSession.setAccountId(appCache.getAccountId()); // todo
 
         return robotSessionRepository.persistAndFlush(robotSession)
                 .onItem()
