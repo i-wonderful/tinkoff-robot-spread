@@ -1,10 +1,10 @@
 # Tinkoff Spread Robot
 
-Робот трогующий на спредах. 
+Робот торгующий на спредах. 
 
 ## Запуск. 
 
-### 1. Запустить бд у докере:
+### 1. Запустить бд в докере:
 ```shell script
 docker run -it --rm=true \
     --name postgres-quarkus -e POSTGRES_USER=trobot \
@@ -16,61 +16,48 @@ docker run -it --rm=true \
 ./mvnw package
 ```
 ```shell script
-java -jar target/quarkus-app/quarkus-run.jar
+java -jar ./target/quarkus-app/quarkus-run.jar
 ```
-Открыть в браузере: http:localhost:8081
+Открыть в браузере: http:localhost:8081/
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
+> **_NOTE:_**  Можно запустить в дев режиме: ./mvnw compile quarkus:dev
 
-## Packaging and running the application
+## Описание работы
 
-The application can be packaged using:
+При размере спреда больше определенной величины, выставляем две заявки на продажу и покупку на шаг цены отличающиеся 
+от существующих в стакане. Для быстрого реагирования подписываемся на изменение orderbook. Если пред слишком меленький, 
+заявки убираем. Если спред изменился, а заявки уже существуют, проверяем их оптимальность: они должны быть на вершине стакана. 
+
+Если знаем какими акциями хотим торговать, указываем их тикеры в файле настроек ./main/resources/application.properties 
+в параметре robot.strategy.shares.tickers.find через запятую. Если не знаем какими акциями будем торговать, оставляем это поле пустым.
+В этом случае запуститься поиск по всем акциям, отбирающих нужные акции по величине спреда и цене. 
+Величина спреда указывается в настройках, параметр robot.strategy.shares.spread.percent число double. 
+Это процент которым является абсолютная величина спреда к цене самое акции (ask price в данном случае). Как правила это небольшая величина порядка 0.7.
+Так же если не хотим торговать слишком дорогими акциями, указываем максимальную цену 
+в параметрах robot.strategy.shares.price.max.usd и robot.strategy.shares.price.max.rub.
+
+Чтобы поиск по всем акциям не вызывал превышения лимитов запросов, ищем их партиями. 
+В одну минуту запускается таймер, где обрабатывается следующие robot.strategy.shares.count.one.minute количество акций (считаем спреды акций и оставляем нужные).
+Когда нашли очередную порцию акций, помещаем их в кеш, где хранятся все интересующие нас акции, перезапускаем работающую в данный момент стратегию.
+Старатегия запускается когда мы нашли первую партию подходящих акций. 
+Количество акций которыми мы хотим торговать определяется параметром robot.strategy.shares.max.count. 
+Когда мы нашли нужное число акций, таймеры останавливаются, больше ничего не ищем. 
+
+В стратегии подписываемся на стрим изменения стакана и стрим сделок. 
+Обрабатываем данные стакана, решаем выставлять ли заявки или убирать. Если выставлять проверяем есть ли они и на вершине ли стакана.
+Когда сделка совершена, записываем данные в бд. 
+В бд для статистики храним пользовательский сеанс (время начала и завершения работы) и сделки в это время.
+
+Логгирование осуществляется асинхронними отправками сообщений. Лог выводится в ui. Более подробный лог в консоль и файл trobot.log.
+
+Чтобы это все благополучно работало, задействовано максимум асинхронных вызовов. Все написано на реактивной библ. smallrye-mutiny 
+и других реактивных расширениях фреймворка quarkus. Сообщения передаются в vertx eventBus. На фронте они выводятся в реалтайме.
+
+В планах расширить критерии поиска акций, сделать остановку робота по таймеру, улучшить ui, улучшить eventHandler, доработать логику купли-продажи.
+
+p.s сейчас указан appname=i-wonderful и с ним тестировалось последний торговый день, 
+ранее был ошибочно указан appname=iwonderful, если можно посмотрите те заявки тоже.
 
 
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using ``.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Pnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Pnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/tinkof-robot-1.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.
-
-## Related Guides
-
-- RESTEasy Reactive ([guide](https://quarkus.io/guides/resteasy-reactive)): A JAX-RS implementation utilizing build time
-  processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions
-  that depend on it.
-- Reactive Routes ([guide](https://quarkus.io/guides/reactive-routes)): REST framework offering the route model to
-  define non blocking endpoints
-
-## Provided Code
-
-### RESTEasy Reactive
-
-Easily start your Reactive RESTful Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+                                     
