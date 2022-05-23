@@ -6,7 +6,7 @@ import com.byby.trobot.controller.dto.codec.ListCodec;
 import com.byby.trobot.controller.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StrategyManager;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.bridge.PermittedOptions;
 import io.vertx.ext.web.handler.sockjs.SockJSBridgeOptions;
@@ -29,7 +29,7 @@ public class ApplicationInit {
     @Inject
     Vertx vertx;
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
     @Inject
     StrategyManager strategyManager;
     @Inject
@@ -49,13 +49,6 @@ public class ApplicationInit {
         vertx.eventBus().registerCodec(new OrderStateDtoCodec());
         vertx.eventBus().unregisterCodec(ListCodec.NAME);
         vertx.eventBus().registerCodec(new ListCodec());
-
-        Consumer<Throwable> handler = exception -> {
-            System.out.println(">>>>>>> Handler E Vertx " + exception.getMessage());
-            log.error(">>> Error Vertx " + exception.getMessage());
-        };
-
-        vertx.exceptionHandler(handler);
 
         // init caches
         Uni.combine().all().unis(

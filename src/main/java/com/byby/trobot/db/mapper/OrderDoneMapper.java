@@ -3,7 +3,7 @@ package com.byby.trobot.db.mapper;
 import com.byby.trobot.controller.dto.OrderDoneDto;
 import com.byby.trobot.db.entity.OrderDone;
 import com.byby.trobot.db.entity.OrderDoneDirection;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import com.google.protobuf.Timestamp;
 import ru.tinkoff.piapi.contract.v1.OrderDirection;
 import ru.tinkoff.piapi.contract.v1.OrderTrade;
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 public class OrderDoneMapper {
 
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
 
     public OrderDone toEntity(OrderTrades orderTrades) {
         OrderDone orderDone = new OrderDone();

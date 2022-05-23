@@ -1,7 +1,7 @@
 package com.byby.trobot.controller.dto.mapper;
 
 import com.byby.trobot.controller.dto.OrderStateDto;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import io.smallrye.mutiny.Uni;
 import ru.tinkoff.piapi.contract.v1.OrderDirection;
 import ru.tinkoff.piapi.contract.v1.OrderExecutionReportStatus;
@@ -20,7 +20,7 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.moneyValueToBigDecimal;
 @ApplicationScoped
 public class OrderMapper {
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
 
     public Uni<List<OrderStateDto>> toDtoUni(List<OrderState> orderStates) {
         if (orderStates == null || orderStates.isEmpty()) {

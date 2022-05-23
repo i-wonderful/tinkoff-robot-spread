@@ -4,7 +4,7 @@ import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.controller.handler.ExceptionHandler;
 import com.byby.trobot.service.ExchangeService;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import com.byby.trobot.service.impl.SpreadService;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.impl.model.Spread;
@@ -42,7 +42,7 @@ public class SpreadFindFigiService implements FindFigiService {
     @Inject
     ExchangeService exchangeService;
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
     @Inject
     SpreadService spreadService;
     @Inject

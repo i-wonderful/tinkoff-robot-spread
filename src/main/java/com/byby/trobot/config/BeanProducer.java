@@ -1,5 +1,6 @@
 package com.byby.trobot.config;
 
+import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.controller.handler.ExceptionHandler;
 import io.quarkus.arc.DefaultBean;
 import io.quarkus.arc.properties.IfBuildProperty;
@@ -15,22 +16,25 @@ import javax.inject.Inject;
 public class BeanProducer {
 
     @Inject
-    ApplicationProperties properties;
-
-    @Inject
-    AppProperties appProperties;
+    RobotProperties properties;
 
     @DefaultBean
     @ApplicationScoped
     @IfBuildProperty(name = "robot.sandbox.mode", stringValue = "false")
     public InvestApi investApi() {
-        return InvestApi.create(properties.getTokenReal(), appProperties.getAppname());
+        if(!properties.tokenReal().isPresent()) {
+            throw new CriticalException("Не указан токен для работы с реальным счетом.");
+        }
+        return InvestApi.create(properties.tokenReal().get(), properties.appname());
     }
 
     @ApplicationScoped
     @IfBuildProperty(name = "robot.sandbox.mode", stringValue = "true")
     public InvestApi investApiSandbox() {
-        return InvestApi.createSandbox(properties.getTokenSandbox(), appProperties.getAppname());
+        if (!properties.tokenSandbox().isPresent()){
+            throw new CriticalException("Не указан токен для работы со счетом песочницы.");
+        }
+        return InvestApi.createSandbox(properties.tokenSandbox().get(), properties.appname());
     }
 
 }

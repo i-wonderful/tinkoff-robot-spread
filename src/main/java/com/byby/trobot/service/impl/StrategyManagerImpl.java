@@ -49,7 +49,7 @@ public class StrategyManagerImpl implements StrategyManager {
     StrategySharesProperties strategySharesProperties;
     
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
 
     @Inject
     ExchangeService exchangeService;
@@ -151,7 +151,7 @@ public class StrategyManagerImpl implements StrategyManager {
             return Uni.createFrom().item(Collections.emptyList());
         }
         eventLogger.log(String.format("Будем торговать акциями из настроек tickers=%s", tickers));
-        return sharesService.findByTicker(tickers);
+        return sharesService.findFigiByTicker(tickers);
     }
 
     /**

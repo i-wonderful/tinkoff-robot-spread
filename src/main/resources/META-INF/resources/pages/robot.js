@@ -102,8 +102,7 @@ export default {
     template: `
     <div>
         <div class="row">
-            <div class="col-3">Биржи:</div>
-            <div class="col-9">
+            <div class="col-5">
                 <div v-for="(exc, index) in exchanges" >
                     <b style="padding-right: 10px">{{exc.name}}</b> 
                     <span v-if="exc.open">открыта</span>
@@ -115,6 +114,14 @@ export default {
                         </span>
                     </span>
                     <br/>
+                </div>
+                <b>Робот запущен: </b> <span>{{isRun}}</span>
+            </div>
+            <div class="col-7">
+                <div class="log-errors-panel">
+                    <div v-for="(error, index) in errors"  >
+                        {{errors[index]}}
+                    </div>
                 </div>
             </div>
         </div>
@@ -147,7 +154,6 @@ export default {
                     </tr>
                 </tbody>
             </table>
-            
         </div>
         
         <h5>Основной лог</h5>
@@ -156,17 +162,6 @@ export default {
                 {{logs[index]}}
             </div>
         </div>
-        
-        <br/>
-        
-        <h5>Лог ошибок</h5>
-        <div class="log-errors-panel">
-            <div v-for="(error, index) in errors"  >
-                {{errors[index]}}
-            </div>
-        </div>
-        
     </div>
-      
     `
 }

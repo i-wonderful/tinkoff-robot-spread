@@ -2,10 +2,10 @@ package com.byby.trobot.executor.impl;
 
 import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.common.EventLogger;
-import com.byby.trobot.config.SandboxProperties;
-import com.byby.trobot.controller.exception.CriticalException;
+import com.byby.trobot.config.RobotSandboxProperties;
 import com.byby.trobot.controller.dto.PortfolioDto;
 import com.byby.trobot.controller.dto.mapper.PortfolioMapper;
+import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.SandboxAccountService;
 import com.byby.trobot.service.impl.SpreadService;
@@ -26,7 +26,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import static com.byby.trobot.executor.impl.Helper.*;
+import static com.byby.trobot.executor.impl.Helper.findOpenAccountId;
+import static com.byby.trobot.executor.impl.Helper.toUni;
 import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
 
 /**
@@ -41,12 +42,12 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
     private SandboxService sandboxService;
     private SpreadService spreadService;
     private PortfolioMapper portfolioMapper;
-    private SandboxProperties properties;
+    private RobotSandboxProperties properties;
     private AppCache appCache;
     private EventLogger eventLogger;
     private String accountId;
 
-    public SandboxExecutor(SandboxProperties properties, InvestApi api, SpreadService spreadService, PortfolioMapper portfolioMapper, AppCache appCache, EventLogger eventLogger) {
+    public SandboxExecutor(RobotSandboxProperties properties, InvestApi api, SpreadService spreadService, PortfolioMapper portfolioMapper, AppCache appCache, EventLogger eventLogger) {
         log.info(">>> Init SandboxExecutor");
         this.properties = properties;
         this.sandboxService = api.getSandboxService();
@@ -219,8 +220,8 @@ public class SandboxExecutor implements Executor, SandboxAccountService {
         return toUni(sandboxService.openAccount())
                 .onItem()
                 .call(accountId -> {
-                    MoneyValue balanceRub = bigDecimalToMoneyValue(properties.getInitBalanceRub());
-                    MoneyValue balanceUsd = bigDecimalToMoneyValue(properties.getInitBalanceUsd(), "USD");
+                    MoneyValue balanceRub = bigDecimalToMoneyValue(properties.initBalanceRub());
+                    MoneyValue balanceUsd = bigDecimalToMoneyValue(properties.initBalanceUsd(), "USD");
                     CompletableFuture payRub = sandboxService.payIn(accountId, balanceRub);
                     CompletableFuture payUsd = sandboxService.payIn(accountId, balanceUsd);
                     CompletableFuture.allOf(payRub, payUsd).join();

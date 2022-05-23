@@ -2,7 +2,7 @@ package com.byby.trobot.controller.dto.mapper;
 
 import com.byby.trobot.controller.dto.PortfolioDto;
 import com.byby.trobot.controller.dto.PortfolioPositionDto;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import ru.tinkoff.piapi.contract.v1.PortfolioPosition;
 import ru.tinkoff.piapi.contract.v1.PortfolioResponse;
@@ -24,7 +24,7 @@ import static ru.tinkoff.piapi.core.utils.MapperUtils.quotationToBigDecimal;
 public class PositionMapper {
 
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
 
     @ConfigProperty(name = "tinkoff.figi.usd")
     String tinkoffFigiUsd;

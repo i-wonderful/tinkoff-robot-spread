@@ -1,18 +1,15 @@
 package com.byby.trobot.strategy.impl;
 
 import com.byby.trobot.common.EventLogger;
-import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.config.RobotSandboxProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.StatisticService;
 import com.byby.trobot.service.impl.OrderbookService;
 import com.byby.trobot.service.impl.SpreadService;
-import com.byby.trobot.service.impl.SharesService;
 import com.byby.trobot.strategy.Strategy;
 import com.byby.trobot.strategy.impl.model.OrderPair;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;
-import io.vertx.mutiny.core.Vertx;
-import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.*;
@@ -35,19 +32,6 @@ public class SpreadStrategy implements Strategy {
     private static final Logger log = LoggerFactory.getLogger(SpreadStrategy.class);
 
     @Inject
-    Vertx vertx;
-
-    @Inject
-    EventBus bus;
-
-    //todo заменить пропертиз на что-нибудь конфигурируемое
-    @Inject
-    ApplicationProperties properties;
-
-    @Inject
-    SharesService sharesService;
-
-    @Inject
     OrderbookService orderbookService;
     @Inject
     SpreadService spreadService;
@@ -59,6 +43,8 @@ public class SpreadStrategy implements Strategy {
     SpreadDecision spreadDecision;
     @Inject
     StatisticService statisticService;
+    @Inject
+    RobotSandboxProperties properties;
 
     @Override
     public void start(List<String> figi) {

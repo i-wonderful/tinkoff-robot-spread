@@ -2,11 +2,11 @@ package com.byby.trobot.executor.impl;
 
 import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.common.EventLogger;
-import com.byby.trobot.config.AppProperties;
-import com.byby.trobot.controller.exception.CriticalException;
-import com.byby.trobot.controller.handler.ExceptionHandler;
+import com.byby.trobot.config.RobotProperties;
 import com.byby.trobot.controller.dto.PortfolioDto;
 import com.byby.trobot.controller.dto.mapper.PortfolioMapper;
+import com.byby.trobot.controller.exception.CriticalException;
+import com.byby.trobot.controller.handler.ExceptionHandler;
 import com.byby.trobot.executor.Executor;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
@@ -30,7 +30,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.byby.trobot.executor.impl.Helper.*;
-import static ru.tinkoff.piapi.core.utils.MapperUtils.*;
+import static ru.tinkoff.piapi.core.utils.MapperUtils.bigDecimalToQuotation;
 
 /**
  * Операции с реальным счетом
@@ -48,17 +48,17 @@ public class RealExecutor implements Executor {
     private OrdersStreamService ordersStreamService;
 
     private EventLogger eventLogger;
-    private AppProperties appProperties;
+    private RobotProperties properties;
     private ExceptionHandler exceptionHandler;
     private AppCache appCache;
     private String accountId;
 
-    public RealExecutor(InvestApi api, EventLogger eventLogger, PortfolioMapper portfolioMapper, AppProperties appProperties, ExceptionHandler exceptionHandler, AppCache appCache) {
+    public RealExecutor(InvestApi api, EventLogger eventLogger, PortfolioMapper portfolioMapper, RobotProperties properties, ExceptionHandler exceptionHandler, AppCache appCache) {
         log.info(">>> Init RealExecutor");
         this.usersService = api.getUserService();
         this.operationsService = api.getOperationsService();
         this.eventLogger = eventLogger;
-        this.appProperties = appProperties;
+        this.properties = properties;
         this.portfolioMapper = portfolioMapper;
         this.ordersService = api.getOrdersService();
         this.ordersStreamService = api.getOrdersStreamService();
@@ -115,7 +115,7 @@ public class RealExecutor implements Executor {
 
     @Override
     public Uni<PostOrderResponse> postSellLimitOrder(String figi, BigDecimal price) {
-        if (appProperties.isMarginAllow()) {
+        if (properties.isMarginAllow()) {
             return postSellLimitOrderDirect(figi, price);
         } else {
             return hasPosition(figi)

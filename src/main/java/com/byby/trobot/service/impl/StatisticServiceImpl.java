@@ -12,6 +12,7 @@ import com.byby.trobot.db.repository.RobotSessionRepository;
 import com.byby.trobot.service.StatisticService;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.contract.v1.OrderTrades;
@@ -85,6 +86,7 @@ public class StatisticServiceImpl implements StatisticService {
 
         log.info(">>> Statistic save 1, robotId= " + robotId + " ot=" + orderTrades);
         return robotSessionRepository.findById(robotId)
+                .emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem()
                 .transformToUni(rs -> {
                     log.info(">>> Statistic save 11 : rs=" + rs);

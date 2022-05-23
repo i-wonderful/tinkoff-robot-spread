@@ -1,6 +1,7 @@
 package com.byby.trobot.controller;
 
-import com.byby.trobot.config.ApplicationProperties;
+import com.byby.trobot.config.RobotProperties;
+import com.byby.trobot.config.RobotSandboxProperties;
 import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.controller.dto.ExchangeDto;
 import com.byby.trobot.controller.dto.OrderStateDto;
@@ -29,21 +30,18 @@ import static com.byby.trobot.controller.dto.mapper.SettingsMapper.toDto;
 public class AccountController {
     @Inject
     Instance<Executor> executor;
-
-    @Inject
-    ApplicationProperties properties;
-
-    @Inject
-    StrategySharesProperties strategySharesProperties;
-
     @Inject
     ExchangeService exchangeService;
-
     @Inject
     SandboxAccountService sandboxAccountService;
-
     @Inject
     OrderMapper orderMapper;
+    @Inject
+    RobotSandboxProperties robotSandboxProperties;
+    @Inject
+    StrategySharesProperties strategySharesProperties;
+    @Inject
+    RobotProperties robotProperties;
 
     /**
      * Портфолио
@@ -60,7 +58,7 @@ public class AccountController {
     @GET
     @Path("/settings")
     public Uni<SettingsRobotDto> getSettings() {
-        return Uni.createFrom().item(toDto(properties, strategySharesProperties));
+        return Uni.createFrom().item(toDto(robotSandboxProperties, strategySharesProperties, robotProperties));
     }
 
     /**

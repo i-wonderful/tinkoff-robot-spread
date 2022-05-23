@@ -2,12 +2,14 @@ package com.byby.trobot.config;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Настройки стратегии.
+ */
 @ConfigMapping(prefix = "robot.strategy.shares")
 public interface StrategySharesProperties {
 

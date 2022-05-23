@@ -1,5 +1,6 @@
 package com.byby.trobot.service.impl;
 
+import com.byby.trobot.service.SharesService;
 import io.quarkus.cache.CacheResult;
 import io.quarkus.runtime.Startup;
 import io.smallrye.mutiny.Uni;
@@ -14,16 +15,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Операции с акциями
+ * Информация об акциях.
+ *
+ * Будем рассуждать логично, что количество акций на биржах, по крайней мере в течении одного сеанса, не меняется,
+ * поэтому кешируем запросы, дабы снизить нагрузку.
  */
 @Singleton
 @Startup
-public class SharesService {
-    private static final Logger log = LoggerFactory.getLogger(SharesService.class);
+public class SharesServiceImpl implements SharesService {
+    private static final Logger log = LoggerFactory.getLogger(SharesServiceImpl.class);
 
     private InstrumentsService instrumentsService;
 
-    public SharesService(InvestApi api) {
+    public SharesServiceImpl(InvestApi api) {
         instrumentsService = api.getInstrumentsService();
     }
 
@@ -42,15 +46,6 @@ public class SharesService {
                         .collect(Collectors.toList()));
     }
 
-
-    @Deprecated
-    @CacheResult(cacheName = "shares-by-exchage-cache-sync")
-    public List<Share> getSharesSync(List<String> exhanges) {
-        return getSharesSync()
-                .stream()
-                .filter(share -> exhanges.contains(share.getExchange()))
-                .collect(Collectors.toList());
-    }
 
     @Deprecated
     @CacheResult(cacheName = "ticker-by-figi-cache-sync")
@@ -82,7 +77,6 @@ public class SharesService {
     @Deprecated
     @CacheResult(cacheName = "name-by-figi-cache")
     public String findNameByFigiSync(String figi) {
-        log.info(">>> findNameByFigi " + figi);
         return getSharesSync().stream()
                 .filter(sh -> figi.equals(sh.getFigi()))
                 .findFirst()
@@ -96,8 +90,8 @@ public class SharesService {
      * @param tickers
      * @return
      */
-    @CacheResult(cacheName = "shares-by-ticker-cache")
-    public Uni<List<String>> findByTicker(List<String> tickers) {
+    @CacheResult(cacheName = "figi-by-ticker-cache")
+    public Uni<List<String>> findFigiByTicker(List<String> tickers) {
         return getShares()
                 .onItem()
                 .transform(shares -> shares.stream()

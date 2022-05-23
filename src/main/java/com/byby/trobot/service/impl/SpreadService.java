@@ -28,9 +28,9 @@ public class SpreadService {
 
     private final MarketDataService marketDataService;
     private final InstrumentsService instrumentsService;
-    private final SharesService sharesService;
+    private final SharesServiceImpl sharesService;
 
-    public SpreadService(InvestApi api, SharesService sharesService) {
+    public SpreadService(InvestApi api, SharesServiceImpl sharesService) {
         this.instrumentsService = api.getInstrumentsService();
         this.marketDataService = api.getMarketDataService();
         this.sharesService = sharesService;

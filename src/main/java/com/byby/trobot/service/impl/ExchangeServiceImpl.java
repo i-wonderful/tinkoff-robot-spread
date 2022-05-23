@@ -1,8 +1,8 @@
 package com.byby.trobot.service.impl;
 
-import com.byby.trobot.config.ApplicationProperties;
-import com.byby.trobot.controller.exception.BusinessException;
+import com.byby.trobot.config.RobotProperties;
 import com.byby.trobot.controller.dto.ExchangeDto;
+import com.byby.trobot.controller.exception.BusinessException;
 import com.byby.trobot.service.ExchangeService;
 import com.google.protobuf.Timestamp;
 import org.slf4j.Logger;
@@ -12,7 +12,7 @@ import ru.tinkoff.piapi.contract.v1.TradingSchedule;
 import ru.tinkoff.piapi.core.InstrumentsService;
 import ru.tinkoff.piapi.core.InvestApi;
 
-import javax.enterprise.context.RequestScoped;
+import javax.enterprise.context.ApplicationScoped;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -23,16 +23,16 @@ import static ru.tinkoff.piapi.core.utils.DateUtils.timestampToInstant;
 /**
  * Получение информации о биржах.
  */
-@RequestScoped
+@ApplicationScoped
 public class ExchangeServiceImpl implements ExchangeService {
     private static final Logger log = LoggerFactory.getLogger(ExchangeServiceImpl.class);
 
-    private ApplicationProperties properties;
+    private RobotProperties robotProperties;
     private InstrumentsService instrumentsService;
 
-    public ExchangeServiceImpl(InvestApi api, ApplicationProperties properties) {
+    public ExchangeServiceImpl(InvestApi api, RobotProperties robotProperties) {
         this.instrumentsService = api.getInstrumentsService();
-        this.properties = properties;
+        this.robotProperties = robotProperties;
     }
 
     /**
@@ -44,7 +44,7 @@ public class ExchangeServiceImpl implements ExchangeService {
      */
     @Override
     public List<ExchangeDto> getExchangesInfo() {
-        return getExchangesInfo(properties.getRobotExchangeNames());
+        return getExchangesInfo(robotProperties.exchangeNames());
     }
 
     /**

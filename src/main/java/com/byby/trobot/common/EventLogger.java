@@ -3,7 +3,7 @@ package com.byby.trobot.common;
 import com.byby.trobot.controller.dto.OrderStateDto;
 import com.byby.trobot.controller.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.controller.dto.mapper.OrderMapper;
-import com.byby.trobot.service.impl.SharesService;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.mutiny.core.eventbus.EventBus;
@@ -36,7 +36,7 @@ public class EventLogger {
     private static final String TEMPLATE_ORDER_DONE = "[%s] Заявка исполнена. orderId=%s";
 
     @Inject
-    SharesService sharesService;
+    SharesServiceImpl sharesService;
 
     @Inject
     OrderMapper orderMapper;
