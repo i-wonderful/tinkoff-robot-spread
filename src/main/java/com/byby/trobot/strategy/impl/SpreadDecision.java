@@ -8,6 +8,9 @@ import javax.inject.Inject;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+/**
+ * Сервис принятия решения о подходящих акциях.
+ */
 @ApplicationScoped
 public class SpreadDecision {
 

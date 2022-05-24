@@ -3,9 +3,9 @@ package com.byby.trobot.strategy.impl;
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.RobotSandboxProperties;
 import com.byby.trobot.executor.Executor;
+import com.byby.trobot.service.OrderbookService;
 import com.byby.trobot.service.StatisticService;
-import com.byby.trobot.service.impl.OrderbookService;
-import com.byby.trobot.service.impl.SpreadService;
+import com.byby.trobot.service.impl.SpreadServiceImpl;
 import com.byby.trobot.strategy.Strategy;
 import com.byby.trobot.strategy.impl.model.OrderPair;
 import com.byby.trobot.strategy.impl.model.Spread;
@@ -46,6 +46,8 @@ public class SpreadStrategy implements Strategy {
     @Inject
     RobotSandboxProperties properties;
 
+    boolean isSubscribedToTradesStream = false;
+
     @Override
     public void start(List<String> figi) {
         if (figi == null || figi.isEmpty()) {
@@ -55,17 +57,7 @@ public class SpreadStrategy implements Strategy {
 
         eventLogger.log("Запуск стратегии. Отслеживаем акции.", figi);
 
-        // подписываемся на сделки
-        if (!properties.isSandboxMode()) {
-            orderbookService.subscribeTradesStream((orderTrades) -> {
-                String orderId = orderTrades.getOrderId();
-                String figiOrder = orderTrades.getFigi();
-                OrderDirection direction = orderTrades.getDirection();
-                statisticService.save(orderTrades)
-                        .subscribe()
-                        .with((t) -> eventLogger.logOrderDone(orderId, figiOrder, direction));
-            });
-        }
+
 
         // выставляем начальные заявки
         // и подписываемся на стакан
@@ -87,8 +79,6 @@ public class SpreadStrategy implements Strategy {
         if (figiUnsucscribe != null && !figiUnsucscribe.isEmpty()) {
             orderbookService.unsucscribeOrderbook(figiUnsucscribe);
             eventLogger.log("Отписываемся от стаканов", figiUnsucscribe);
-
-            // todo отписать от стрима сделок
         }
         return Uni.createFrom().voidItem();
     }

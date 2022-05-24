@@ -5,7 +5,7 @@ import static com.byby.trobot.common.GlobalBusAddress.*;
 import com.byby.trobot.controller.dto.codec.ListCodec;
 import com.byby.trobot.controller.dto.codec.OrderStateDtoCodec;
 import com.byby.trobot.executor.Executor;
-import com.byby.trobot.service.StrategyManager;
+import com.byby.trobot.strategy.StrategyManager;
 import com.byby.trobot.service.impl.SharesServiceImpl;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.bridge.PermittedOptions;
@@ -21,7 +21,6 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
-import java.util.function.Consumer;
 
 @ApplicationScoped
 public class ApplicationInit {

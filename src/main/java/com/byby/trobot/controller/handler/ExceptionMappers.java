@@ -31,7 +31,7 @@ public class ExceptionMappers {
     @ServerExceptionMapper
     public RestResponse<String> map(CriticalException e) {
         log.error(">>> UserDataCriticalException", e);
-        exceptionHandler.handleException(e);
+        exceptionHandler.handle(e);
         return createResponse500("UserDataCriticalException: " + e.getMessage());
     }
 
@@ -50,7 +50,7 @@ public class ExceptionMappers {
     @ServerExceptionMapper
     public RestResponse<String> map(ApiRuntimeException e) {
         System.out.println(">>>>>>>>>>>>>>!!!!!!!!!!!!!!!!!!!!!! Tinkoff ApiRuntimeException: ");
-        exceptionHandler.handleException(e);
+        exceptionHandler.handleTinkoffException(e);
         return createResponse500("Tinkoff ApiRuntimeException: " + e.getMessage());
     }
 

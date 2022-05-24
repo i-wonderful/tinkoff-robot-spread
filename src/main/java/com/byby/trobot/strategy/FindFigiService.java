@@ -5,7 +5,7 @@ import io.smallrye.mutiny.Uni;
 import java.util.List;
 
 /**
- *
+ * Сервис поиска акций среди всех акций.
  */
 public interface FindFigiService {
 

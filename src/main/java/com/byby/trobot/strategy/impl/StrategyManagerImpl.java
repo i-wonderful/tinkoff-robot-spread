@@ -1,23 +1,25 @@
-package com.byby.trobot.service.impl;
+package com.byby.trobot.strategy.impl;
 
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.common.GlobalBusAddress;
+import com.byby.trobot.config.RobotSandboxProperties;
 import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.controller.exception.BusinessException;
 import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.executor.Executor;
-import com.byby.trobot.service.ExchangeService;
-import com.byby.trobot.service.StatisticService;
-import com.byby.trobot.service.StrategyManager;
+import com.byby.trobot.service.*;
+import com.byby.trobot.service.impl.SharesServiceImpl;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.Strategy;
 import com.byby.trobot.cache.StrategyCacheManager;
+import com.byby.trobot.strategy.StrategyManager;
 import com.google.common.collect.Streams;
 import io.quarkus.vertx.ConsumeEvent;
 import io.smallrye.mutiny.Uni;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.piapi.contract.v1.OrderDirection;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Instance;
@@ -30,37 +32,36 @@ public class StrategyManagerImpl implements StrategyManager {
     private static final Logger log = LoggerFactory.getLogger(StrategyManagerImpl.class);
 
     @Inject
-    EventLogger eventLogger;
-
-    @Inject
     Strategy strategy;
     @Inject
     FindFigiService findFigiService;
     @Inject
-    EventBus bus;
-
-    @Inject
-    Instance<Executor> executor;
-
+    EventLogger eventLogger;
     @Inject
     StrategyCacheManager cacheManager;
-
     @Inject
-    StrategySharesProperties strategySharesProperties;
-    
+    EventBus bus;
+    @Inject
+    Instance<Executor> executor;
     @Inject
     SharesServiceImpl sharesService;
-
     @Inject
     ExchangeService exchangeService;
-
     @Inject
     StatisticService statisticService;
+    @Inject
+    OrdersService ordersService;
+    @Inject
+    StrategySharesProperties strategySharesProperties;
+    @Inject
+    RobotSandboxProperties sandboxProperties;
 
     // запущена ли в данный момент
     private boolean isRun = false;
     // найдено ли нужное количество акций
     private boolean isAllFigiFind = false;
+    // подписан ли на стрим сделок
+    private boolean isSubscribedTrades = false;
 
     /**
      * Запустить стратегию.
@@ -69,7 +70,7 @@ public class StrategyManagerImpl implements StrategyManager {
      */
     @Override
     public Uni<Void> start() {
-        if(exchangeService.getExchangesOpenNow().isEmpty()) {
+        if (exchangeService.getExchangesOpenNow().isEmpty()) {
             throw new BusinessException("Нет открытых бирж в данный момент.");
         }
         if (this.isRun) {
@@ -78,6 +79,7 @@ public class StrategyManagerImpl implements StrategyManager {
         }
 
         eventLogger.log("Поехали!");
+        subscribeTradesStream();
         return startFindFigi()
                 .onItem()
                 .invoke(() -> {
@@ -89,7 +91,6 @@ public class StrategyManagerImpl implements StrategyManager {
 
 
     /**
-     *
      * @return
      */
     @Override
@@ -109,13 +110,27 @@ public class StrategyManagerImpl implements StrategyManager {
     }
 
     @Override
-    public Uni<Void> cancelAllOrders() {
-        return executor.get().cancelAllOrders();
-    }
-
-    @Override
     public boolean isRun() {
         return this.isRun;
+    }
+
+    /**
+     * Подписываемся на сделки,
+     * чтобы собирать статистику.
+     */
+    private void subscribeTradesStream() {
+        if (!sandboxProperties.isSandboxMode() && this.isSubscribedTrades == false) {
+            log.info(">>> Subscribe TradesStream");
+            ordersService.subscribeTradesStream((orderTrades) -> {
+                String orderId = orderTrades.getOrderId();
+                String figiOrder = orderTrades.getFigi();
+                OrderDirection direction = orderTrades.getDirection();
+                statisticService.save(orderTrades)
+                        .subscribe()
+                        .with((t) -> eventLogger.logOrderDone(orderId, figiOrder, direction));
+            });
+            this.isSubscribedTrades = true;
+        }
     }
 
     /**
@@ -125,7 +140,7 @@ public class StrategyManagerImpl implements StrategyManager {
      *
      * @return
      */
-    public Uni<Void> startFindFigi() {
+    private Uni<Void> startFindFigi() {
         return figiFromProperties()
                 .call(figi -> {
                     if (figi == null || figi.isEmpty()) {
@@ -146,10 +161,11 @@ public class StrategyManagerImpl implements StrategyManager {
      * @return список figi
      */
     private Uni<List<String>> figiFromProperties() {
-        List<String> tickers = strategySharesProperties.tickersFind().orElse(Collections.emptyList());
-        if (tickers.isEmpty()) {
+        if (strategySharesProperties.tickersFind().isPresent() == false) {
             return Uni.createFrom().item(Collections.emptyList());
         }
+
+        List<String> tickers = strategySharesProperties.tickersFind().get();
         eventLogger.log(String.format("Будем торговать акциями из настроек tickers=%s", tickers));
         return sharesService.findFigiByTicker(tickers);
     }

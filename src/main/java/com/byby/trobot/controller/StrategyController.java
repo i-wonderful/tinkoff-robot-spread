@@ -1,6 +1,6 @@
 package com.byby.trobot.controller;
 
-import com.byby.trobot.service.StrategyManager;
+import com.byby.trobot.strategy.StrategyManager;
 import io.smallrye.mutiny.Uni;
 
 import javax.enterprise.context.ApplicationScoped;

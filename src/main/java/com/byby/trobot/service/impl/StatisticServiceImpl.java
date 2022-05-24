@@ -3,6 +3,7 @@ package com.byby.trobot.service.impl;
 import com.byby.trobot.cache.AppCache;
 import com.byby.trobot.controller.dto.RobotSessionDto;
 import com.byby.trobot.controller.exception.CriticalException;
+import com.byby.trobot.controller.handler.ExceptionHandler;
 import com.byby.trobot.db.entity.OrderDone;
 import com.byby.trobot.db.entity.RobotSession;
 import com.byby.trobot.db.mapper.OrderDoneMapper;
@@ -35,6 +36,8 @@ public class StatisticServiceImpl implements StatisticService {
     OrderDoneMapper orderDoneMapper;
     @Inject
     AppCache appCache;
+    @Inject
+    ExceptionHandler exceptionHandler;
 
     Long robotId; // todo to cache
 
@@ -49,13 +52,15 @@ public class StatisticServiceImpl implements StatisticService {
                 .onItem()
                 .invoke(rs -> robotId = rs.id)
                 .onFailure()
-                .invoke(throwable -> new CriticalException("Ошибка старта статистики"))
+                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка старта статистики"))
                 .replaceWithVoid();
     }
 
+    @Transactional
+    @ActivateRequestContext
     @Override
     public Uni<Void> stop() {
-        if (robotId == null){
+        if (robotId == null) {
             return Uni.createFrom().voidItem();
         }
         log.info(">>> Statistic stop");
@@ -69,7 +74,7 @@ public class StatisticServiceImpl implements StatisticService {
                     return robotSessionRepository.persistAndFlush(rs);
                 })
                 .onFailure()
-                .invoke(throwable -> new CriticalException("Ошибка сохранения статистики"))
+                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка сохранения статистики"))
                 .replaceWithVoid();
     }
 
@@ -83,20 +88,18 @@ public class StatisticServiceImpl implements StatisticService {
     @Override
     @ActivateRequestContext
     public Uni<Void> save(OrderTrades orderTrades) {
-
-        log.info(">>> Statistic save 1, robotId= " + robotId + " ot=" + orderTrades);
+        log.info(">>> Statistic save 1, robotId={} ot={}", robotId, orderTrades);
         return robotSessionRepository.findById(robotId)
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem()
                 .transformToUni(rs -> {
-                    log.info(">>> Statistic save 11 : rs=" + rs);
                     OrderDone orderDone = orderDoneMapper.toEntity(orderTrades);
                     orderDone.setRobotSession(rs);
-                    log.info(">>> Statistic save 2 , od=" + orderDone);
+                    log.info(">>> Statistic save 2, orderDone={}", orderDone);
                     return orderDone.persistAndFlush();
                 })
                 .onFailure()
-                .invoke(throwable -> new CriticalException("Ошибка сохранения статистики"))
+                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка сохранения статистики", orderTrades.getFigi()))
                 .replaceWithVoid();
     }
 }

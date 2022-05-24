@@ -2,7 +2,8 @@ package com.byby.trobot.controller.handler;
 
 import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.controller.exception.CriticalException;
-import com.byby.trobot.service.StrategyManager;
+import com.byby.trobot.service.SharesService;
+import com.byby.trobot.strategy.StrategyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.piapi.core.exception.ApiRuntimeException;
@@ -16,6 +17,7 @@ public class ExceptionHandler {
 
     private final static String CODE_ERROR_LIMIT = "80002";
     private final static String CODE_INTERNAL_ERROR = "70001";
+    private final static String CODE_MARGIN_ERROR = "30042";
 
     @Inject
     EventLogger eventLogger;
@@ -23,23 +25,58 @@ public class ExceptionHandler {
     @Inject
     StrategyManager strategyManager;
 
+    @Inject
+    SharesService sharesService;
+
+    /**
+     * Обработчик критических
+     *
+     * @param throwable
+     * @param additionalInfo
+     */
     public void handleCritical(Throwable throwable, String additionalInfo) {
         log.error(">>> Critical Error: " + throwable.getMessage() + " " + additionalInfo);
         eventLogger.logCritical(additionalInfo + " " + throwable.getMessage());
         handle(throwable);
     }
 
+    /**
+     * Обработчик ошибок
+     *
+     * @param throwable      эксепшн tinkoffApi
+     * @param additionalInfo дополнительныйй информация
+     * @param figi           идентификатор акции если есть
+     */
+    public void handle(Throwable throwable, String additionalInfo, String figi) {
+        handle(throwable);
+
+        if (figi == null) {
+            eventLogger.logError(additionalInfo);
+        }
+
+        sharesService.findTickerByFigi(figi)
+                .subscribe()
+                .with(ticker -> {
+                    String message = String.format("[%s] %s", ticker, additionalInfo);
+                    eventLogger.logError(message);
+                });
+    }
+
+    public void handle(Throwable throwable, String additionalInfo) {
+        handle(throwable, additionalInfo, null);
+    }
+
     public void handle(Throwable throwable) {
         if (throwable instanceof ApiRuntimeException) {
-            handleException((ApiRuntimeException) throwable);
+            handleTinkoffException((ApiRuntimeException) throwable);
         } else if (throwable instanceof CriticalException) {
-            handleException((CriticalException) throwable);
+            handle((CriticalException) throwable);
         } else {
             log.error("Oh no! We received a failure: " + throwable.getMessage());
         }
     }
 
-    public void handleException(CriticalException e) {
+    public void handle(CriticalException e) {
         log.info(">>>> Handle CriticalException");
         eventLogger.logCritical(e.getMessage());
         eventLogger.log("Критическая ошибка. Останавливаем робота.");
@@ -49,12 +86,14 @@ public class ExceptionHandler {
         }
     }
 
-    public void handleException(ApiRuntimeException tinkoffEx) {
+    public void handleTinkoffException(ApiRuntimeException tinkoffEx) {
         if (CODE_ERROR_LIMIT.equals(tinkoffEx.getCode())) {
             eventLogger.logError(tinkoffEx.getMessage());
             eventLogger.log("Ошибка. Превышены лимиты. Останавливаем робота. Запустите позже.");
             strategyStop();
         } else if (CODE_INTERNAL_ERROR.equals(tinkoffEx.getCode())) {
+            eventLogger.logError(tinkoffEx.getMessage());
+        } else if (CODE_MARGIN_ERROR.equals(tinkoffEx.getCode())) {
             eventLogger.logError(tinkoffEx.getMessage());
         }
     }

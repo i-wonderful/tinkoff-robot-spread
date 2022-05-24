@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import static com.byby.trobot.common.GlobalBusAddress.NEW_FIGI;
 
 /**
- *
+ * Сервис поиска акций среди всех акций.
  */
 @ApplicationScoped
 public class SpreadFindFigiService implements FindFigiService {
@@ -145,7 +145,7 @@ public class SpreadFindFigiService implements FindFigiService {
      */
     private Uni<List<String>> findFigi(List<Share> shares) {
         shares = filterShares(shares);
-        Uni<List<String>> figisFind = spreadService.getSpreads(shares)
+        Uni<List<String>> figisFind = spreadService.calcSpreads(shares)
                 .filter(spreadDecision::isAppropriate)
                 .map(Spread::getFigi)
                 .collect().asList();

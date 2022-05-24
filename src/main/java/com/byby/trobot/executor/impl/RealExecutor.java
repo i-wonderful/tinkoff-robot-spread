@@ -18,7 +18,6 @@ import ru.tinkoff.piapi.core.OperationsService;
 import ru.tinkoff.piapi.core.OrdersService;
 import ru.tinkoff.piapi.core.UsersService;
 import ru.tinkoff.piapi.core.models.Portfolio;
-import ru.tinkoff.piapi.core.stream.OrdersStreamService;
 
 import javax.enterprise.context.ApplicationScoped;
 import java.math.BigDecimal;
@@ -45,7 +44,6 @@ public class RealExecutor implements Executor {
     private OperationsService operationsService;
     private PortfolioMapper portfolioMapper;
     private OrdersService ordersService;
-    private OrdersStreamService ordersStreamService;
 
     private EventLogger eventLogger;
     private RobotProperties properties;
@@ -61,7 +59,6 @@ public class RealExecutor implements Executor {
         this.properties = properties;
         this.portfolioMapper = portfolioMapper;
         this.ordersService = api.getOrdersService();
-        this.ordersStreamService = api.getOrdersStreamService();
         this.exceptionHandler = exceptionHandler;
         this.appCache = appCache;
     }
@@ -101,6 +98,13 @@ public class RealExecutor implements Executor {
         return toUni(operationsService.getPortfolio(accountId));
     }
 
+    /**
+     * Выставить лимитную заявку на покупку.
+     *
+     * @param figi
+     * @param price
+     * @return
+     */
     @Override
     public Uni<PostOrderResponse> postBuyLimitOrder(String figi, BigDecimal price) {
         return toUni(ordersService.postOrder(
@@ -110,7 +114,9 @@ public class RealExecutor implements Executor {
                 OrderDirection.ORDER_DIRECTION_BUY,
                 this.accountId,
                 OrderType.ORDER_TYPE_LIMIT,
-                UUID.randomUUID().toString()));
+                UUID.randomUUID().toString()))
+                .onFailure()
+                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка выставления заявки на покупку.", figi));
     }
 
     @Override
@@ -122,17 +128,22 @@ public class RealExecutor implements Executor {
                     .onItem()
                     .transformToUni(isHasPosition -> {
                         if (isHasPosition) {
-                            return postSellLimitOrderDirect(figi, price)
-                                    .onFailure()
-                                    .transform(throwable -> new CriticalException(throwable, "Ошибка выставления заявки на продажу."));
+                            return postSellLimitOrderDirect(figi, price);
                         } else {
-                            eventLogger.log("Маржинальная торговля запрещена и нет позиций в этой акции. Продажу не выставляем");
+                            eventLogger.log("Маржинальная торговля запрещена и нет позиций в этой акции. Продажу не выставляем.", figi);
                             return Uni.createFrom().nothing();
                         }
                     });
         }
     }
 
+    /**
+     * Выставить лимитную заявку на продажу.
+     *
+     * @param figi
+     * @param price
+     * @return
+     */
     private Uni<PostOrderResponse> postSellLimitOrderDirect(String figi, BigDecimal price) {
         return toUni(ordersService.postOrder(
                 figi,
@@ -141,7 +152,9 @@ public class RealExecutor implements Executor {
                 OrderDirection.ORDER_DIRECTION_SELL,
                 this.accountId,
                 OrderType.ORDER_TYPE_LIMIT,
-                UUID.randomUUID().toString()));
+                UUID.randomUUID().toString()))
+                .onFailure()
+                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка выставления заявки на продажу.", figi));
     }
 
     public Uni<Boolean> hasPosition(String figi) {
@@ -181,11 +194,10 @@ public class RealExecutor implements Executor {
      */
     @Override
     public Uni<Instant> cancelOrder(String orderId) {
-        log.info(">>>> cancelOrder " + this.accountId, orderId);
         return toUni(ordersService.cancelOrder(this.accountId, orderId))
                 .invoke(() -> eventLogger.log("Отменена заявка orderId=" + orderId))
                 .onFailure()
-                .invoke(throwable -> exceptionHandler.handle(throwable));
+                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка отмены заявки"));
     }
 
     /**
