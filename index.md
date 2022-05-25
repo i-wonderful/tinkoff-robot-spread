@@ -1,6 +1,33 @@
-## Документация Tinkoff Robot Spread
+# Документация Tinkoff Robot Spread
 
-### Описание настроек в application.properties
+Проект на java 11, сборка maven. 
+Используется фреймворк [quarkus](https://quarkus.io) и его расширения: 
+[mutiny](https://smallrye.io/smallrye-mutiny/), quarkus-hibernate-reactive-panache, quarkus-resteasy-reactive, quarkus-vertx и др. 
+Бд postgresql, запускается в докере. ui на vuejs, взаимодействие с бекендом как по rest так и по eventbus.
+
+## Запуск.
+### 1. Указать токен
+В файле настроек ./main/resources/application.properties
+параметр robot.token.real и токен песочницы robot.token.sandbox.
+Выставить флаг работы в песочнице robot.sandbox.modе желаемым образом.
+### 2. Запустить бд в докере:
+```shell script
+docker run -it --rm=true \
+    --name postgres-quarkus -e POSTGRES_USER=trobot \
+    -e POSTGRES_PASSWORD=trobot -e POSTGRES_DB=trobot \
+    -p 5433:5432 postgres:14.1
+```
+### 3. Сборка и запуск:
+```shell script
+./mvnw package
+```
+```shell script
+java -jar ./target/quarkus-app/quarkus-run.jar
+```
+Открыть в браузере: http://localhost:8081/
+ 
+
+## Описание настроек в application.properties
 
 #### Настройки робота
 `robot.appname` - Appname InvestApi <br/>
@@ -26,12 +53,13 @@
 ### Описание классов и пакетов.
 
 [com.byby.trobot.strategy](/strategy-package.md) - классы стратегии и управления<br/>
+[com.byby.trobot.executor](/executor-package.md) - исполнители операции с песочницей или реальным счетом<br/>
 `com.byby.trobot.cache` - управление кешем<br/>
 `com.byby.trobot.common` - глобальные константы, общие классы<br/>
 `com.byby.trobot.config` - конфиг, инициализация<br/>
 `com.byby.trobot.controller` - контроллеры<br/>
 `com.byby.trobot.db` - работа с бд<br/>
-`com.byby.trobot.executor` - исполнители операции с песочницей или реальным счетом<br/>
+
 `com.byby.trobot.service` - сервисы работы с tinkoff api<br/>
 
 
