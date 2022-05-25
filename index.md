@@ -23,10 +23,9 @@
 `robot.strategy.shares.price.max.usd` - Торгуем акциями не дороже цены, в долларах.<br/>
 `robot.strategy.shares.price.max.rub` - Торгуем акциями не дороже цены, в рублях.<br/>
 
-
-
 ### Описание классов и пакетов.
 
+[`com.byby.trobot.strategy`](/strategy.md) - классы стратегии и управления<br/>
 `com.byby.trobot.cache` - управление кешем<br/>
 `com.byby.trobot.common` - глобальные константы, общие классы<br/>
 `com.byby.trobot.config` - конфиг, инициализация<br/>
@@ -34,10 +33,9 @@
 `com.byby.trobot.db` - работа с бд<br/>
 `com.byby.trobot.executor` - исполнители операции с песочницей или реальным счетом<br/>
 `com.byby.trobot.service` - сервисы работы с tinkoff api<br/>
-`com.byby.trobot.strategy` - классы стратегии и управления<br/>
 
 
-to be continied...
+to be continued...
 
 
 
