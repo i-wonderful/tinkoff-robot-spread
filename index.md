@@ -25,7 +25,7 @@
 
 ### Описание классов и пакетов.
 
-[`com.byby.trobot.strategy`](/strategy.md) - классы стратегии и управления<br/>
+[com.byby.trobot.strategy](/strategy.md) - классы стратегии и управления<br/>
 `com.byby.trobot.cache` - управление кешем<br/>
 `com.byby.trobot.common` - глобальные константы, общие классы<br/>
 `com.byby.trobot.config` - конфиг, инициализация<br/>

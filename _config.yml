@@ -1,6 +1,6 @@
 theme: jekyll-theme-minimal
 plugins:
   - jekyll-menus
-#sidebar:
-#  - name: Strategy
-#    link: /strategy.md
+
+title: Tinkoff Spread Strategy
+#description: Java trading robot for [invest-robot-contest](https://github.com/Tinkoff/invest-robot-contest)
