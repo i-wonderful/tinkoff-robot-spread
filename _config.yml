@@ -1,5 +1,6 @@
 theme: jekyll-theme-minimal
-
-sidebar:
-  - name: Strategy
-    link: /strategy.md
+plugins:
+  - jekyll-menus
+#sidebar:
+#  - name: Strategy
+#    link: /strategy.md
