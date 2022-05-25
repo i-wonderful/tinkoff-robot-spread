@@ -1,4 +1,4 @@
 header:
-  - url: /strategy.md
-    title: Strategy
-    identifier: Strategy
+  - url: /strategy-package.md
+    title: strategy-package
+    identifier: strategy-package
