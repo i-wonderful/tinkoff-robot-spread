@@ -116,7 +116,10 @@ public class RealExecutor implements Executor {
                 OrderType.ORDER_TYPE_LIMIT,
                 UUID.randomUUID().toString()))
                 .onFailure()
-                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка выставления заявки на покупку.", figi));
+                .recoverWithUni(throwable -> {
+                    exceptionHandler.handle(throwable, "Ошибка выставления заявки на покупку.", figi);
+                    return Uni.createFrom().nothing();
+                });
     }
 
     @Override
