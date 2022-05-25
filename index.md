@@ -1,37 +1,45 @@
-## Welcome to GitHub Pages
+## Документация Tinkoff Robot Spread
 
-You can use the [editor on GitHub](https://github.com/i-wonderful/tinkoff-robot-spread/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+### Описание настроек в application.properties
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+#### Настройки робота
+`robot.appname` - Appname InvestApi <br/>
+`robot.sandbox.mode` - Режим песочницы: true/false<br/>
+`robot.token.sandbox` - Токен песочницы. Необязательный параметр. Можно не указывать, если работаем с реальным счетом.<br/>
+`robot.token.real` - Токен реального счета. Необязательный параметр. Можно не указывать, если работаем со счетом песочницы.<br/> 
+`robot.sandbox.init.balance.usd` - Начальный баланс песочницы в долларах при пересоздании аккаунта, число double.<br/>
+`robot.sandbox.init.balance.rub` - Начальный баланс песочницы в рублях при пересоздании аккаунта, число double.<br/>
+`robot.exchange.names`- Биржи с которыми работаем. Обязательный параметр.<br/>
+`robot.margin.allow` - Доступна ли маржинальная торговля. boolean<br/>
 
-### Markdown
+#### Настройки поиска
+`robot.strategy.shares.tickers.find` - Список акций которыми будем торговать. Тикеры через запятую. Необязательный параметр, если не указывать, будет поиск по всем. <br/>
+`robot.strategy.shares.tickers.exclude` - Акции которые исключить из поиска. Тикеры через запятую. Необязательный параметр.<br/>
+`robot.strategy.shares.max.count` - Количество акций которыми будем торговать. <br/>
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+#### Настройки стратегии
+`robot.strategy.shares.spread.percent` - Минимальный величина спреда при которой выставляем заявки. В проценте от цены акции.<br/>
+`robot.strategy.shares.count.one.minute` - Число акций обрабатываемых в минуту при поиске по всем акциям. Чтобы избежать превышения лимитов.<br/>
+`robot.strategy.shares.price.max.usd` - Торгуем акциями не дороже цены, в долларах.<br/>
+`robot.strategy.shares.price.max.rub` - Торгуем акциями не дороже цены, в рублях.<br/>
 
-```markdown
-Syntax highlighted code block
 
-# Header 1
-## Header 2
-### Header 3
 
-- Bulleted
-- List
+### Описание классов и пакетов.
 
-1. Numbered
-2. List
+`com.byby.trobot.cache` - управление кешем<br/>
+`com.byby.trobot.common` - глобальные константы, общие классы<br/>
+`com.byby.trobot.config` - конфиг, инициализация<br/>
+`com.byby.trobot.controller` - контроллеры<br/>
+`com.byby.trobot.db` - работа с бд<br/>
+`com.byby.trobot.executor` - исполнители операции с песочницей или реальным счетом<br/>
+`com.byby.trobot.service` - сервисы работы с tinkoff api<br/>
+`com.byby.trobot.strategy` - классы стратегии и управления<br/>
 
-**Bold** and _Italic_ and `Code` text
 
-[Link](url) and ![Image](src)
-```
+to be continied...
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
 
-### Jekyll Themes
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/i-wonderful/tinkoff-robot-spread/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
 
-### Support or Contact
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
