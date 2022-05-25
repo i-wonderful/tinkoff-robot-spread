@@ -74,6 +74,9 @@ public class StatisticServiceImpl implements StatisticService {
                     return robotSessionRepository.persistAndFlush(rs);
                 })
                 .onFailure()
+                .retry()
+                .atMost(2)
+                .onFailure()
                 .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка сохранения статистики"))
                 .replaceWithVoid();
     }
@@ -98,6 +101,9 @@ public class StatisticServiceImpl implements StatisticService {
                     log.info(">>> Statistic save 2, orderDone={}", orderDone);
                     return orderDone.persistAndFlush();
                 })
+                .onFailure()
+                .retry()
+                .atMost(2)
                 .onFailure()
                 .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка сохранения статистики", orderTrades.getFigi()))
                 .replaceWithVoid();
