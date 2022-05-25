@@ -5,7 +5,7 @@ import com.byby.trobot.config.StrategySharesProperties;
 import com.byby.trobot.controller.handler.ExceptionHandler;
 import com.byby.trobot.service.ExchangeService;
 import com.byby.trobot.service.impl.SharesServiceImpl;
-import com.byby.trobot.service.impl.SpreadService;
+import com.byby.trobot.service.SpreadService;
 import com.byby.trobot.strategy.FindFigiService;
 import com.byby.trobot.strategy.impl.model.Spread;
 import io.smallrye.mutiny.Uni;

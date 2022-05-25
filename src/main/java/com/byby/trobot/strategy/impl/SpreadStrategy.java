@@ -4,6 +4,7 @@ import com.byby.trobot.common.EventLogger;
 import com.byby.trobot.config.RobotSandboxProperties;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.OrderbookService;
+import com.byby.trobot.service.SpreadService;
 import com.byby.trobot.service.StatisticService;
 import com.byby.trobot.service.impl.SpreadServiceImpl;
 import com.byby.trobot.strategy.Strategy;

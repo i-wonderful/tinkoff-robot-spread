@@ -8,7 +8,7 @@ import com.byby.trobot.controller.dto.mapper.PortfolioMapper;
 import com.byby.trobot.controller.exception.CriticalException;
 import com.byby.trobot.executor.Executor;
 import com.byby.trobot.service.SandboxAccountService;
-import com.byby.trobot.service.impl.SpreadService;
+import com.byby.trobot.service.SpreadService;
 import io.quarkus.arc.lookup.LookupIfProperty;
 import io.smallrye.mutiny.Uni;
 import org.slf4j.Logger;
