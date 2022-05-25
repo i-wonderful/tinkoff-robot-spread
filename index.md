@@ -11,17 +11,17 @@
 параметр robot.token.real и токен песочницы robot.token.sandbox.
 Выставить флаг работы в песочнице robot.sandbox.modе желаемым образом.
 ### 2. Запустить бд в докере:
-```shell script
+```
 docker run -it --rm=true \
     --name postgres-quarkus -e POSTGRES_USER=trobot \
     -e POSTGRES_PASSWORD=trobot -e POSTGRES_DB=trobot \
     -p 5433:5432 postgres:14.1
 ```
 ### 3. Сборка и запуск:
-```shell script
+```
 ./mvnw package
 ```
-```shell script
+```
 java -jar ./target/quarkus-app/quarkus-run.jar
 ```
 Открыть в браузере: http://localhost:8081/
