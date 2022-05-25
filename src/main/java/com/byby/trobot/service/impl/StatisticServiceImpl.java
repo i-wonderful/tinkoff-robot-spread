@@ -11,6 +11,7 @@ import com.byby.trobot.db.mapper.RobotSessionMapper;
 import com.byby.trobot.db.repository.OrderDoneRepository;
 import com.byby.trobot.db.repository.RobotSessionRepository;
 import com.byby.trobot.service.StatisticService;
+import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -41,16 +42,19 @@ public class StatisticServiceImpl implements StatisticService {
 
     Long robotId; // todo to cache
 
-    @Transactional
+    @Override
     public Uni<Void> start() {
         log.info(">>> Statistic start");
         RobotSession robotSession = new RobotSession();
         robotSession.setStartRobot(LocalDateTime.now());
 //        robotSession.setAccountId(appCache.getAccountId()); // todo
 
-        return robotSessionRepository.persistAndFlush(robotSession)
+        return Panache.withTransaction(() -> robotSessionRepository.persist(robotSession))//robotSessionRepository.persistAndFlush(robotSession)
                 .onItem()
-                .invoke(rs -> robotId = rs.id)
+                .invoke(rs -> {
+                    robotId = rs.id;
+                    log.info(">>> Statistic start save success");
+                })
                 .onFailure()
                 .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка старта статистики"))
                 .replaceWithVoid();
@@ -73,6 +77,8 @@ public class StatisticServiceImpl implements StatisticService {
                     }
                     return robotSessionRepository.persistAndFlush(rs);
                 })
+                .onItem()
+                .invoke(() -> log.info(">>> Statistic stop save success"))
                 .onFailure()
                 .retry()
                 .atMost(2)
@@ -92,15 +98,17 @@ public class StatisticServiceImpl implements StatisticService {
     @ActivateRequestContext
     public Uni<Void> save(OrderTrades orderTrades) {
         log.info(">>> Statistic save 1, robotId={} ot={}", robotId, orderTrades);
-        return robotSessionRepository.findById(robotId)
-                .emitOn(Infrastructure.getDefaultWorkerPool())
+        return Panache.withTransaction(() -> robotSessionRepository.findById(robotId))
+                //.emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem()
                 .transformToUni(rs -> {
                     OrderDone orderDone = orderDoneMapper.toEntity(orderTrades);
                     orderDone.setRobotSession(rs);
                     log.info(">>> Statistic save 2, orderDone={}", orderDone);
-                    return orderDone.persistAndFlush();
+                    return orderDone.persist();
                 })
+                .onItem()
+                .invoke(() -> log.info(">>> Statistic sve success"))
                 .onFailure()
                 .retry()
                 .atMost(2)

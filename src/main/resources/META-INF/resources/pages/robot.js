@@ -32,7 +32,8 @@ export default {
                     this.isRun = false;
                 })
                 .catch(e => {
-                    console.info(e);
+                    console.log(e);
+                    this.isRun = false;
                 });
         },
         onCancelAllOrders() {

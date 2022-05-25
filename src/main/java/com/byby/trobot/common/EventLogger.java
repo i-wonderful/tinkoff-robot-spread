@@ -33,7 +33,7 @@ public class EventLogger {
     private static final String TEMPLATE_ORDER_ADD_BUY = "[%s] Выставлена лимитная заявка на покупку по цене %f, orderId=%s";
     private static final String TEMPLATE_ORDER_ADD_SELL = "[%s] Выставлена лимитная заявка на продажу по цене %f, orderId=%s";
     private static final String TEMPLATE_ORDER_CANCEL = "[%s] Отменена заявка на %s. orderId=%s";
-    private static final String TEMPLATE_ORDER_DONE = "[%s] Заявка исполнена. orderId=%s";
+    private static final String TEMPLATE_ORDER_DONE = "[%s] Заявка исполнена на %s. orderId=%s";
 
     @Inject
     SharesServiceImpl sharesService;
