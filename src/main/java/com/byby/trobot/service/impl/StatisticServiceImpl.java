@@ -93,7 +93,6 @@ public class StatisticServiceImpl implements StatisticService {
                 .map(RobotSessionMapper::toDto);
     }
 
-    @Transactional
     @Override
     @ActivateRequestContext
     public Uni<Void> save(OrderTrades orderTrades) {
@@ -104,11 +103,11 @@ public class StatisticServiceImpl implements StatisticService {
                 .transformToUni(rs -> {
                     OrderDone orderDone = orderDoneMapper.toEntity(orderTrades);
                     orderDone.setRobotSession(rs);
-                    log.info(">>> Statistic save 2, orderDone={}", orderDone);
-                    return orderDone.persist();
+                    log.info(">>> Statistic save 2");
+                    return orderDone.persistAndFlush();
                 })
                 .onItem()
-                .invoke(() -> log.info(">>> Statistic sve success"))
+                .invoke((t) -> log.info(">>> Statistic save success , orderDone={}", t))
                 .onFailure()
                 .retry()
                 .atMost(2)
