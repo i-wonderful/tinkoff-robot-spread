@@ -14,7 +14,15 @@ export default {
         console.log("mounted")
         axios.get("/statistic/all")
             .then(response => {
+                var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
                 this.robotSessions = response.data;
+                this.robotSessions.forEach(rs => {
+                    rs.startRobot = (new Date(rs.startRobot)).toLocaleDateString('RU-ru', options);
+
+                    rs.orderDones.forEach(od => {
+                        od.dateTimeDone = new Date(od.dateTimeDone).toLocaleTimeString('Ru-ru', {hour: 'numeric', minute: 'numeric', second: '2-digit'});
+                    })
+                });
             });
     },
     template: `

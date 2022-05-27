@@ -41,6 +41,7 @@ public class ApplicationInit {
                 .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ORDER))
                 .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ERROR))
                 .addOutboundPermitted(new PermittedOptions().setAddress(LOG_ERR_CRITICAL))
+                .addOutboundPermitted(new PermittedOptions().setAddress(LOG_CURRENT_RUN_TICKERS))
         );
         router.route("/eventbus/*").handler(sockJSHandler);
 

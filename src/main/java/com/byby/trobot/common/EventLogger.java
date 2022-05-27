@@ -152,7 +152,24 @@ public class EventLogger {
     }
 
     /**
-     * Вывод в лог и удалить удалить ордер из таблицы в ui.
+     *
+     * @param figi
+     */
+    public void logCurrentRunFigi(List<String> figi) {
+        List<Uni<String>> tickersUni = figi.stream()
+                .map(sharesService::findTickerByFigi)
+                .collect(Collectors.toList());
+
+        Uni.join().all(tickersUni)
+                .andCollectFailures()
+                .onItem()
+                .transform(tickers -> tickers.stream().collect(Collectors.joining(",")))
+                .subscribe()
+                .with(tickers -> bus.publish(GlobalBusAddress.LOG_CURRENT_RUN_TICKERS, tickers));
+    }
+
+    /**
+     * Вывод в лог и удалить ордер из таблицы в ui.
      */
     private void logOrderAndUiRemove(String template, String orderId, String figi, OrderDirection orderDirection) {
         sharesService.findTickerByFigi(figi)

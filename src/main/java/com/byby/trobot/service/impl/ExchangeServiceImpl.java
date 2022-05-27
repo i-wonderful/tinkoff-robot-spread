@@ -70,6 +70,7 @@ public class ExchangeServiceImpl implements ExchangeService {
     private List<ExchangeDto> getExchangesInfo(List<String> exchanges) {
         return exchanges.stream()
                 .map(exchange -> {
+                    // todo make async
                     TradingSchedule tradingSchedule = instrumentsService
                             .getTradingScheduleSync(exchange, Instant.now(), Instant.now().plus(6, ChronoUnit.DAYS));
                     return getExchangeInfo(tradingSchedule);

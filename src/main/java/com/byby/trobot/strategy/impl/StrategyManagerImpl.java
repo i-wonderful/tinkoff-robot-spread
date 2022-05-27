@@ -215,6 +215,7 @@ public class StrategyManagerImpl implements StrategyManager {
                     return allAddToCache;
                 })
                 .call(allAddToCache -> cacheManager.clearAndAddFigi(allAddToCache))
+                .invoke(figi -> eventLogger.logCurrentRunFigi(figi))
                 .onFailure()
                 .transform((throwable) -> new CriticalException(throwable, "Ошибка запуска стратегии"))
                 .subscribe()

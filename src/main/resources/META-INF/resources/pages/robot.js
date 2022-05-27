@@ -2,7 +2,7 @@ export default {
     name: 'Robot',
     setup() {
         const title = 'Robot'
-        return {title}
+        return { title }
     },
     data() {
         return {
@@ -11,7 +11,8 @@ export default {
             exchanges: [],
             logs: [],
             logOrders: [],
-            errors: []
+            errors: [],
+            currentRunTickers: ""
         }
     },
     methods: {
@@ -20,8 +21,14 @@ export default {
                 .then(response => {
                     console.log(response);
                     this.isRun = true;
+                    let myToasteur = new Toasteur("top-right", 2000);
+                    myToasteur.success('Запущен', 'Успешно', () => {
+                        // do something when clicked
+                    })
                 })
                 .catch(e => {
+                    let myToasteur = new Toasteur("top-right", 2000);
+                    myToasteur.error(e,'Ошибка');
                     console.info(e);
                 });
         },
@@ -30,16 +37,20 @@ export default {
                 .then(response => {
                     console.log(response);
                     this.isRun = false;
+                    let myToasteur = new Toasteur("top-right", 2000);
+                    myToasteur.success('Остановлен', 'Успешно');
                 })
                 .catch(e => {
                     console.log(e);
                     this.isRun = false;
+                    new Toasteur("top-right", 2000).error( e,'Ошибка');
                 });
         },
         onCancelAllOrders() {
             axios.get("/account/cancel-all-orders")
                 .then(resp => {
                     this.getCurrentOrders();
+                    new Toasteur("top-right", 2000).info('Заявки отменены', '');
                 });
 
         },
@@ -88,6 +99,9 @@ export default {
             });
             this.eventBus.registerHandler('LOG_ERROR', (error, message) => {
                 this.errors.push(message.body);
+            });
+            this.eventBus.registerHandler('LOG_CURRENT_RUN_TICKERS', (error, message) => {
+                this.currentRunTickers = message.body;
             });
         }
 
@@ -156,7 +170,10 @@ export default {
                 </tbody>
             </table>
         </div>
-        
+        <br/>
+        <div>
+            <span>Отслеживаемые акции:</span><span>{{currentRunTickers}}</span>
+        </div>
         <h5>Основной лог</h5>
         <div id="log-panel" class="log-panel">
             <div v-for="(log, index) in logs" >
