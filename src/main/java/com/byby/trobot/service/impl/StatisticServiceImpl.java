@@ -12,6 +12,7 @@ import com.byby.trobot.db.repository.OrderDoneRepository;
 import com.byby.trobot.db.repository.RobotSessionRepository;
 import com.byby.trobot.service.StatisticService;
 import io.quarkus.hibernate.reactive.panache.Panache;
+import io.quarkus.panache.common.Sort;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -89,7 +90,7 @@ public class StatisticServiceImpl implements StatisticService {
 
     @Override
     public Multi<RobotSessionDto> getAll() {
-        return robotSessionRepository.findAll()
+        return robotSessionRepository.findAll(Sort.descending("startRobot"))
                 .stream()
                 .map(RobotSessionMapper::toDto);
     }
