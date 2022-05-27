@@ -12,6 +12,7 @@ import ru.tinkoff.piapi.core.utils.MapperUtils;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -30,18 +31,24 @@ public class OrderDoneMapper {
         OrderDone orderDone = new OrderDone();
         orderDone.setOrderId(orderTrades.getOrderId());
         orderDone.setFigi(orderTrades.getFigi());
-        orderDone.setDirection(mapDirection(orderTrades.getDirection()));
+        OrderDoneDirection direction = mapDirection(orderTrades.getDirection());
+        orderDone.setDirection(direction);
+        //orderDone.setCurrency(orderTrades.get)
 //        orderDone.setTicker(sharesService.findTickerByFigiSync(orderDone.getFigi())); // todo
 
         // мы торгуем по одной сделке
         if (orderTrades.getTradesCount() == 1) {
-
             OrderTrade ot = orderTrades.getTrades(0);
-            orderDone.setQuantity(ot.getQuantity());
             orderDone.setDateTimeDone(mapDatetime(ot.getDateTime()));
-            orderDone.setPrice(MapperUtils.quotationToBigDecimal(ot.getPrice()));
+            orderDone.setQuantity(ot.getQuantity());
+            orderDone.setPrice(getPrice(ot, direction));
         }
         return orderDone;
+    }
+
+    private static BigDecimal getPrice(OrderTrade ot, OrderDoneDirection direction) {
+        int sign = OrderDoneDirection.BUY.equals(direction) ? -1 : 1;
+        return MapperUtils.quotationToBigDecimal(ot.getPrice()).multiply(BigDecimal.valueOf(sign));
     }
 
     public static List<OrderDoneDto> toDto(List<OrderDone> entities) {
@@ -64,6 +71,7 @@ public class OrderDoneMapper {
         dto.setDateTimeDone(entity.getDateTimeDone());
         dto.setQuantity(entity.getQuantity());
         dto.setTicker(entity.getTicker());
+        dto.setFullPrice(entity.getPrice().multiply(BigDecimal.valueOf(entity.getQuantity())));
         return dto;
 
     }

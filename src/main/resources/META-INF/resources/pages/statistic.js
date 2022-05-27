@@ -18,13 +18,16 @@ export default {
                 this.robotSessions = response.data;
                 this.robotSessions.forEach(rs => {
                     rs.startRobot = (new Date(rs.startRobot)).toLocaleDateString('RU-ru', options);
-
+                    if (rs.endRobot != null) {
+                        rs.endRobot = (new Date(rs.endRobot)).toLocaleDateString('RU-ru', options);
+                    }
                     rs.orderDones.forEach(od => {
                         od.dateTimeDone = new Date(od.dateTimeDone).toLocaleTimeString('Ru-ru', {hour: 'numeric', minute: 'numeric', second: '2-digit'});
                     })
                 });
             });
     },
+    // <div class="col-3">AccountId: {{rs.accountId}}</div> 
     template: `
         <div>
             <h5>{{title}}</h5>
@@ -32,9 +35,9 @@ export default {
                 <h5>Список сессий:</h5>
                 <div v-for="rs in robotSessions" >
                     <div class="row">
-                        <div class="col-3">AccountId: {{rs.accountId}}</div>
                         <div class="col-4">Время старта: <b>{{rs.startRobot}}</b></div>
                         <div class="col-5">Время завершения: <b>{{rs.endRobot}}</b></div>
+                        <div class="col-3">Баланс: <b>{{rs.balance}}</b></div>
                     </div>
                     <b>Завершенные заявки:</b>       
                     
@@ -43,10 +46,11 @@ export default {
                     <tr>
                         <th>orderId</th>
                         <th>figi</th>
-                        <th>Цена</th>
+                        <th>Цена 1 лота</th>
                         <th>Количество</th>
+                        <th>Полная стоимость</th>
                         <th>Тип</th>
-                        <th>Дата сделки</th>
+                        <th>Время сделки</th>
                     </tr>
                 </thead>
                 <tbody>       
@@ -55,6 +59,7 @@ export default {
                         <td>{{od.figi}}</td>
                         <td>{{od.price}}</td>
                         <td>{{od.quantity}}</td>
+                        <td>{{od.fullPrice}}</td>
                         <td>{{od.direction}}</td>
                         <td>{{od.dateTimeDone}}</td>
                     </tr>

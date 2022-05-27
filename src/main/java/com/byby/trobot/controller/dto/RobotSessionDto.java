@@ -1,11 +1,6 @@
 package com.byby.trobot.controller.dto;
 
-import com.byby.trobot.db.entity.OrderDone;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.FetchType;
-import javax.persistence.OneToMany;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,7 +12,10 @@ public class RobotSessionDto {
 
     private LocalDateTime endRobot;
 
+    private BigDecimal balance;
+
     private List<OrderDoneDto> orderDones;
+
 
     public String getAccountId() {
         return accountId;
@@ -49,5 +47,13 @@ public class RobotSessionDto {
 
     public void setOrderDones(List<OrderDoneDto> orderDones) {
         this.orderDones = orderDones;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
     }
 }

@@ -205,9 +205,8 @@ public class SpreadStrategy implements Strategy {
      */
     private void postBuyLimitOrder(String figi, BigDecimal price) {
         executor.get().postBuyLimitOrder(figi, price)
-                .onItem()
-                .ifNotNull()
-                .invoke(response -> eventLogger.logPostOrder(response));
+                .subscribe()
+                .with(response -> eventLogger.logPostOrder(response));
     }
 
     /**
@@ -215,9 +214,8 @@ public class SpreadStrategy implements Strategy {
      */
     private void postSellLimitOrder(String figi, BigDecimal price) {
         executor.get().postSellLimitOrder(figi, price)
-                .onItem()
-                .ifNotNull()
-                .invoke(response -> eventLogger.logPostOrder(response))
+                .subscribe()
+                .with(response -> eventLogger.logPostOrder(response))
         ;
     }
 

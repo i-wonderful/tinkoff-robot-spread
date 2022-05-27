@@ -20,6 +20,9 @@ public class OrderDoneDto {
     // Количество лотов
     private long quantity;
 
+    // полная стоимость
+    private BigDecimal fullPrice;
+
     private ZonedDateTime dateTimeDone;
 
     private OrderDoneDirection direction;
@@ -78,5 +81,13 @@ public class OrderDoneDto {
 
     public void setDirection(OrderDoneDirection direction) {
         this.direction = direction;
+    }
+
+    public BigDecimal getFullPrice() {
+        return fullPrice;
+    }
+
+    public void setFullPrice(BigDecimal fullPrice) {
+        this.fullPrice = fullPrice;
     }
 }

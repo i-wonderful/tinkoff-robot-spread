@@ -89,7 +89,8 @@ public class StatisticServiceImpl implements StatisticService {
 
     @Override
     public Multi<RobotSessionDto> getAll() {
-        return robotSessionRepository.findAll().stream()
+        return robotSessionRepository.findAll()
+                .stream()
                 .map(RobotSessionMapper::toDto);
     }
 
