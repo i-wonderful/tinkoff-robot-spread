@@ -50,7 +50,7 @@ public class StatisticServiceImpl implements StatisticService {
         robotSession.setStartRobot(LocalDateTime.now());
 //        robotSession.setAccountId(appCache.getAccountId()); // todo
 
-        return Panache.withTransaction(() -> robotSessionRepository.persist(robotSession))//robotSessionRepository.persistAndFlush(robotSession)
+        return Panache.withTransaction(() -> robotSessionRepository.persist(robotSession))
                 .onItem()
                 .invoke(rs -> {
                     robotId = rs.id;
@@ -61,7 +61,6 @@ public class StatisticServiceImpl implements StatisticService {
                 .replaceWithVoid();
     }
 
-    @Transactional
     @ActivateRequestContext
     @Override
     public Uni<Void> stop() {
@@ -99,7 +98,7 @@ public class StatisticServiceImpl implements StatisticService {
     @ActivateRequestContext
     public Uni<Void> save(OrderTrades orderTrades) {
         log.info(">>> Statistic save 1, robotId={} ot={}", robotId, orderTrades);
-        return Panache.withTransaction(() -> robotSessionRepository.findById(robotId))
+        return Panache.withTransaction(() -> robotSessionRepository.findById(robotId)
                 //.emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem()
                 .transformToUni(rs -> {
@@ -107,7 +106,7 @@ public class StatisticServiceImpl implements StatisticService {
                     orderDone.setRobotSession(rs);
                     log.info(">>> Statistic save 2");
                     return orderDone.persistAndFlush();
-                })
+                }))
                 .onItem()
                 .invoke((t) -> log.info(">>> Statistic save success , orderDone={}", t))
                 .onFailure()

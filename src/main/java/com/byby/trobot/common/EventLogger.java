@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 import static com.byby.trobot.common.GlobalBusAddress.LOG;
 import static com.byby.trobot.common.GlobalBusAddress.LOG_ORDER;
-
+import static com.byby.trobot.controller.dto.OrderStateDto.OrderStatus.*;
 /**
  * Логгирование событий.
  */
@@ -99,10 +99,11 @@ public class EventLogger {
         bus.publish(LOG_ORDER, dto, new DeliveryOptions().setCodecName(OrderStateDtoCodec.NAME));
     }
 
-    private void uiOrderListRemove(String orderId) {
+    private void uiOrderListRemove(String orderId, OrderStateDto.OrderStatus status) {
         OrderStateDto dto = new OrderStateDto();
         dto.setOrderId(orderId);
-        dto.setUiAction("REMOVE");
+        dto.setOrderStatus(CANCEL);
+        dto.setOrderStatus(status);
         uiOrderList(dto);
     }
 
@@ -114,7 +115,7 @@ public class EventLogger {
             return;
         }
         OrderStateDto dto = orderMapper.toDto(response);
-        dto.setUiAction("ADD");
+        dto.setOrderStatus(NEW);
         uiOrderList(dto);
 
         String template = "%s %f %s";
@@ -136,7 +137,7 @@ public class EventLogger {
      * @return
      */
     public void logOrderCancel(String orderId, String figi, OrderDirection orderDirection) {
-        logOrderAndUiRemove(TEMPLATE_ORDER_CANCEL, orderId, figi, orderDirection);
+        logOrderAndUiRemove(TEMPLATE_ORDER_CANCEL, orderId, figi, orderDirection, CANCEL);
     }
 
     /**
@@ -148,7 +149,7 @@ public class EventLogger {
      * @return
      */
     public void logOrderDone(String orderId, String figi, OrderDirection orderDirection) {
-        logOrderAndUiRemove(TEMPLATE_ORDER_DONE, orderId, figi, orderDirection);
+        logOrderAndUiRemove(TEMPLATE_ORDER_DONE, orderId, figi, orderDirection, DONE);
     }
 
     /**
@@ -171,7 +172,7 @@ public class EventLogger {
     /**
      * Вывод в лог и удалить ордер из таблицы в ui.
      */
-    private void logOrderAndUiRemove(String template, String orderId, String figi, OrderDirection orderDirection) {
+    private void logOrderAndUiRemove(String template, String orderId, String figi, OrderDirection orderDirection, OrderStateDto.OrderStatus status) {
         sharesService.findTickerByFigi(figi)
                 .subscribe()
                 .with(ticker -> {
@@ -181,7 +182,7 @@ public class EventLogger {
                     log.info(message);
 
                     // убрать из таблицы ордеров в ui
-                    uiOrderListRemove(orderId);
+                    uiOrderListRemove(orderId, status);
                 });
     }
 

@@ -166,10 +166,10 @@ public class SpreadFindFigiService implements FindFigiService {
 
 
     private List<Share> filterShares(List<Share> shares){
-        List<String> figiExclude = strategySharesProperties.tickersExclude().orElse(Collections.emptyList());
-        if (!figiExclude.isEmpty()) {
+        if (strategySharesProperties.tickersExclude().isPresent()) {
+            List<String> tickersExclude = strategySharesProperties.tickersExclude().get();
             shares = shares.stream()
-                    .filter(share -> !figiExclude.contains(share.getFigi()))
+                    .filter(share -> !tickersExclude.contains(share.getTicker()))
                     .collect(Collectors.toList());
         }
         return shares;

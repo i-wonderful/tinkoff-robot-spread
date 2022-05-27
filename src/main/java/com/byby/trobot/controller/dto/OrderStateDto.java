@@ -11,7 +11,7 @@ public class OrderStateDto {
     // цена за 1 шт.
     private BigDecimal initialPrice;
     private String currency;
-    private String uiAction;
+    private OrderStatus orderStatus;
 
     public String getOrderId() {
         return orderId;
@@ -69,11 +69,17 @@ public class OrderStateDto {
         this.ticker = ticker;
     }
 
-    public String getUiAction() {
-        return uiAction;
+    public OrderStatus getOrderStatus() {
+        return orderStatus;
     }
 
-    public void setUiAction(String uiAction) {
-        this.uiAction = uiAction;
+    public void setOrderStatus(OrderStatus orderStatus) {
+        this.orderStatus = orderStatus;
+    }
+
+    public enum OrderStatus {
+        NEW,
+        CANCEL,
+        DONE
     }
 }

@@ -203,7 +203,10 @@ public class RealExecutor implements Executor {
         return toUni(ordersService.cancelOrder(this.accountId, orderId))
                 .invoke(() -> eventLogger.log("Отменена заявка orderId=" + orderId))
                 .onFailure()
-                .invoke(throwable -> exceptionHandler.handle(throwable, "Ошибка отмены заявки"));
+                .recoverWithUni(throwable -> {
+                    exceptionHandler.handle(throwable, "Ошибка отмены заявки orderId=" + orderId);
+                    return Uni.createFrom().nothing();
+                });
     }
 
     /**

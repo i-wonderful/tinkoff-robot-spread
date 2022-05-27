@@ -81,11 +81,11 @@ export default {
             });
             this.eventBus.registerHandler('LOG_ORDER', (error, message) => {
                 const order = message.body;
-                const uiAction = order.uiAction;
+                const orderStatus = order.orderStatus;
                 const orderIdNew = order.orderId;
-                if (uiAction == "ADD") {
+                if (orderStatus == "NEW") {
                     this.logOrders.push(message.body);
-                } else if (uiAction == "REMOVE") {
+                } else if (orderStatus == "CANCEL") {
                     const orderFind = this.logOrders.find(order => {
                         if (order.orderId === orderIdNew) {
                             return order;
@@ -93,8 +93,18 @@ export default {
                     });
                     const index = this.logOrders.indexOf(orderFind);
                     this.logOrders.splice(index, 1);
-                } else {
-                    console.warn("Not found uiAction");
+                } else if(orderStatus == "DONE") {
+                    const orderFind = this.logOrders.find(order => {
+                        if (order.orderId === orderIdNew) {
+                            return order;
+                        }
+                    });
+                    const index = this.logOrders.indexOf(orderFind);
+                    this.logOrders.splice(index, 1);
+                    new Toasteur("top-right", 2000).info('Заявка исполнена', 'orderId=' + order.orderId);
+                }
+                else {
+                    console.warn("Not found orderStatus");
                 }
             });
             this.eventBus.registerHandler('LOG_ERROR', (error, message) => {

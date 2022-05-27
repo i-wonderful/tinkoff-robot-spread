@@ -18,6 +18,7 @@ public class ExceptionHandler {
     private final static String CODE_ERROR_LIMIT = "80002";
     private final static String CODE_INTERNAL_ERROR = "70001";
     private final static String CODE_MARGIN_ERROR = "30042";
+    private final static String CODE_ERROR_CANCEL_ORDER = "50005";
 
     @Inject
     EventLogger eventLogger;
@@ -91,11 +92,14 @@ public class ExceptionHandler {
             eventLogger.logError(tinkoffEx.getMessage());
             eventLogger.log("Ошибка. Превышены лимиты. Останавливаем робота. Запустите позже.");
             strategyStop();
-        } else if (CODE_INTERNAL_ERROR.equals(tinkoffEx.getCode())) {
-            eventLogger.logError(tinkoffEx.getMessage());
-        } else if (CODE_MARGIN_ERROR.equals(tinkoffEx.getCode())) {
+        } else {
             eventLogger.logError(tinkoffEx.getMessage());
         }
+//        else if (CODE_INTERNAL_ERROR.equals(tinkoffEx.getCode())) {
+//            eventLogger.logError(tinkoffEx.getMessage());
+//        } else if (CODE_MARGIN_ERROR.equals(tinkoffEx.getCode())) {
+//            eventLogger.logError(tinkoffEx.getMessage());
+//        }
     }
 
     private void strategyStop() {

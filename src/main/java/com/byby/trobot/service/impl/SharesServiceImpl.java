@@ -92,6 +92,9 @@ public class SharesServiceImpl implements SharesService {
      */
     @CacheResult(cacheName = "figi-by-ticker-cache")
     public Uni<List<String>> findFigiByTicker(List<String> tickers) {
+        if (tickers.isEmpty()) {
+            return Uni.createFrom().nothing();
+        }
         return getShares()
                 .onItem()
                 .transform(shares -> shares.stream()
